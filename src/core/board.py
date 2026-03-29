@@ -64,8 +64,7 @@ class Board:
             board.append(row)
         return board
 
-    @property
-    def empty_pos(self) -> tuple[int, int]:
+    def get_empty_pos(self) -> tuple[int, int]:
         return self._empty_pos
 
     def _apply_direction(self, r: int, c: int, d: Direction) -> tuple[int, int]:
@@ -81,6 +80,19 @@ class Board:
             if 0 <= nr < self.size and 0 <= nc < self.size:
                 moves.append(d)
         return moves
+
+    def move_by_pos(self, r: int, c: int) -> bool:
+        """Move to (r, c) if it's adjacent to the empty cell."""
+        if not (0 <= r < self.size and 0 <= c < self.size):
+            return False
+
+        er, ec = self._empty_pos
+        # Check if (r, c) is adjacent to the empty cell (Manhattan distance = 1)
+        if abs(r - er) + abs(c - ec) == 1:
+            self.matrix[er][ec], self.matrix[r][c] = self.matrix[r][c], self.matrix[er][ec]
+            self._empty_pos = (r, c)
+            return True
+        return False
 
     def move(self, direction: Direction) -> bool:
         """Move the empty cell in the given direction.

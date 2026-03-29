@@ -37,7 +37,7 @@ class GameManager:
     def process_move(self, r: int, c: int) -> bool:
         if not self.is_playing:
             return False
-        if self.board.move(r, c):
+        if self.board.move_by_pos(r, c):
             self.move_count += 1
 
             if self.board.is_solved():

@@ -14,7 +14,7 @@ class Direction(Enum):
 
     Conversion: new_row = row + dy, new_col = col + dx
     """
-    
+
     UP = (0, -1)
     DOWN = (0, 1)
     LEFT = (-1, 0)
@@ -52,7 +52,7 @@ class Board:
     def _generate_solved_board(self) -> list[list[int]]:
         board = []
         count = 1
-        
+
         for i in range(self.size):
             row = []
             for j in range(self.size):
@@ -95,22 +95,20 @@ class Board:
         self._empty_pos = (nr, nc)
         return True
 
-    def shuffle(self, seed: int | str | None = None, num_shuffles: int | None = None):
+    def shuffle(self, seed: int | str | None = None):
         """Scramble by moving the empty cell randomly from the solved state.
         Seed can be an int (64-bit recommended) or a string (auto-converted)."""
         if seed == "":
             seed = None
         elif isinstance(seed, str):
             seed = self._seed_from_string(seed)
-        if num_shuffles is None:
-            num_shuffles = self.num_shuffles
 
         self.matrix = [row[:] for row in self.solved_board]
         self._empty_pos = (self.size - 1, self.size - 1)
         rng = random.Random(seed)
 
         prev_direction = None
-        for _ in range(num_shuffles):
+        for _ in range(self.num_shuffles):
             moves = self.get_valid_moves()
             if prev_direction:
                 opposite = prev_direction.opposite

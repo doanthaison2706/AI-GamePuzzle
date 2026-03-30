@@ -44,6 +44,7 @@ class Board:
 
     def __init__(self, size: int):
         self.size = size
+        self.total_tiles = size * size - 1
         self.num_shuffles = 100
         self.solved_board = self._generate_solved_board()
         self.matrix = [row[:] for row in self.solved_board]
@@ -139,6 +140,14 @@ class Board:
     def is_solved(self) -> bool:
         """Check if the board matches the goal state."""
         return self.matrix == self.solved_board
+
+    def count_correct_tiles(self) -> int:
+        """Return number of tiles in correct position.
+        Empty cell (0) is excluded from the count."""
+        return sum(
+            1 for r in range(self.size) for c in range(self.size)
+            if self.matrix[r][c] != 0 and self.matrix[r][c] == self.solved_board[r][c]
+        )
 
     def print_board(self):
         """Print board to terminal for debugging."""

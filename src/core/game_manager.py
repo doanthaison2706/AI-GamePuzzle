@@ -1,4 +1,5 @@
 import time
+import random
 from .board_factory import BoardFactory
 
 class GameManager:
@@ -33,6 +34,22 @@ class GameManager:
         self.move_count = 0
         self.start_time = time.time()
         self.elapsed_time = 0.0
+
+    def new_game_with_seed(self, seed: int):
+        """Start a new game with a specific shuffle seed.
+        Use the same seed on two GameManager instances to get identical boards."""
+        self.board = BoardFactory.create(self.size)
+        self.board.shuffle(seed=seed)
+
+        self.is_playing = True
+        self.move_count = 0
+        self.start_time = time.time()
+        self.elapsed_time = 0.0
+
+    @staticmethod
+    def generate_seed() -> int:
+        """Generate a random seed for synchronized shuffling."""
+        return random.randint(0, 2**63 - 1)
 
     def process_move(self, r: int, c: int) -> bool:
         if not self.is_playing:

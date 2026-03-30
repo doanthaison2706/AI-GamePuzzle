@@ -1,19 +1,22 @@
 import time
-from .game_manager import SingleGameManager
+from .base_game_manager import BaseGameManager
+from .board_factory import BoardFactory
 from .player import PlayerSlot
 
 
-class DualGameManager:
+class DualGameManager(BaseGameManager):
     """Manages a 2-player competitive game session.
-    Wraps two GameManager instances with the same shuffle seed."""
+    Uses two Board instances with the same shuffle seed."""
 
     def __init__(self, size: int, p1: PlayerSlot, p2: PlayerSlot):
-        self.size = size
+        super().__init__(size)
         self.p1 = p1
         self.p2 = p2
 
-        self.gm1 = SingleGameManager(size)
-        self.gm2 = SingleGameManager(size)
+        self.board1 = BoardFactory.create(size)
+        self.board2 = BoardFactory.create(size)
+
+        self.start_time = 0.0
 
         # Scoreboard — persists across rounds
         self.score = {p1.player_id: 0, p2.player_id: 0}
@@ -21,42 +24,48 @@ class DualGameManager:
 
     def new_game(self):
         """Start a new round with identical boards for both players."""
-        seed = SingleGameManager.generate_seed()
+        seed = self.generate_seed()
 
-        self.gm1.new_game_with_seed(seed)
-        self.gm2.new_game_with_seed(seed)
+        self.board1 = BoardFactory.create(self.size)
+        self.board2 = BoardFactory.create(self.size)
+        self.board1.shuffle(seed=seed)
+        self.board2.shuffle(seed=seed)
 
         self.p1.reset_stats()
         self.p2.reset_stats()
+        self.is_playing = True
+        self.start_time = time.time()
         self.winner = None
 
     def process_move(self, player_id: int, r: int, c: int) -> bool:
         """Process a move for the given player. Returns True if valid move."""
-        if self.winner is not None:
+        if not self.is_playing or self.winner is not None:
             return False
 
-        gm, player = self._get_gm_and_player(player_id)
-        result = gm.process_move(r, c)
+        board, player = self._get_board_and_player(player_id)
 
-        if result:
-            player.move_count = gm.move_count
-            self._update_player_stats(player, gm)
+        if board.move_by_pos(r, c):
+            player.move_count += 1
+            player.correct_count = board.count_correct_tiles()
 
-            if gm.board.is_solved():
+            if board.is_solved():
                 self.winner = player
                 self.score[player.player_id] += 1
                 self._stop_all()
 
-        return result
+            return True
+
+        return False
 
     def update(self):
         """Update time and progress for both players (call each frame)."""
-        if self.winner is not None:
+        if not self.is_playing:
             return
 
-        for player, gm in [(self.p1, self.gm1), (self.p2, self.gm2)]:
-            gm.update_time()
-            self._update_player_stats(player, gm)
+        elapsed = time.time() - self.start_time
+        for player, board in [(self.p1, self.board1), (self.p2, self.board2)]:
+            player.elapsed_time = elapsed
+            player.correct_count = board.count_correct_tiles()
 
     def is_game_over(self) -> bool:
         return self.winner is not None
@@ -67,21 +76,16 @@ class DualGameManager:
 
     # --- Private helpers ---
 
-    def _get_gm_and_player(self, player_id: int) -> tuple[SingleGameManager, PlayerSlot]:
+    def _get_board_and_player(self, player_id: int):
         if player_id == self.p1.player_id:
-            return self.gm1, self.p1
-        return self.gm2, self.p2
-
-    def _update_player_stats(self, player: PlayerSlot, gm: SingleGameManager):
-        player.move_count = gm.move_count
-        player.elapsed_time = gm.elapsed_time
-        player.correct_count = gm.board.count_correct_tiles()
+            return self.board1, self.p1
+        return self.board2, self.p2
 
     def _stop_all(self):
-        """Stop both games when a winner is determined."""
-        self.gm1.is_playing = False
-        self.gm2.is_playing = False
-        self.gm1.update_time()
-        self.gm2.update_time()
-        self._update_player_stats(self.p1, self.gm1)
-        self._update_player_stats(self.p2, self.gm2)
+        """Stop game when a winner is determined."""
+        self.is_playing = False
+        elapsed = time.time() - self.start_time
+        self.p1.elapsed_time = elapsed
+        self.p2.elapsed_time = elapsed
+        self.p1.correct_count = self.board1.count_correct_tiles()
+        self.p2.correct_count = self.board2.count_correct_tiles()

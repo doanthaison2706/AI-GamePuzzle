@@ -2,7 +2,7 @@ import time
 import random
 from .board_factory import BoardFactory
 
-class GameManager:
+class SingleGameManager:
 
     def __init__(self, size: int = 3):
         self.size = size

@@ -1,5 +1,5 @@
 import time
-from .game_manager import GameManager
+from .game_manager import SingleGameManager
 from .player import PlayerSlot
 
 
@@ -12,8 +12,8 @@ class DualGameManager:
         self.p1 = p1
         self.p2 = p2
 
-        self.gm1 = GameManager(size)
-        self.gm2 = GameManager(size)
+        self.gm1 = SingleGameManager(size)
+        self.gm2 = SingleGameManager(size)
 
         # Scoreboard — persists across rounds
         self.score = {p1.player_id: 0, p2.player_id: 0}
@@ -21,7 +21,7 @@ class DualGameManager:
 
     def new_game(self):
         """Start a new round with identical boards for both players."""
-        seed = GameManager.generate_seed()
+        seed = SingleGameManager.generate_seed()
 
         self.gm1.new_game_with_seed(seed)
         self.gm2.new_game_with_seed(seed)
@@ -67,12 +67,12 @@ class DualGameManager:
 
     # --- Private helpers ---
 
-    def _get_gm_and_player(self, player_id: int) -> tuple[GameManager, PlayerSlot]:
+    def _get_gm_and_player(self, player_id: int) -> tuple[SingleGameManager, PlayerSlot]:
         if player_id == self.p1.player_id:
             return self.gm1, self.p1
         return self.gm2, self.p2
 
-    def _update_player_stats(self, player: PlayerSlot, gm: GameManager):
+    def _update_player_stats(self, player: PlayerSlot, gm: SingleGameManager):
         player.move_count = gm.move_count
         player.elapsed_time = gm.elapsed_time
         player.correct_count = gm.board.count_correct_tiles()

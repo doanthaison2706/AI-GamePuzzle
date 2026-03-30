@@ -1,6 +1,6 @@
 import pygame
 from configs import game_config as config
-from src.core.game_manager import GameManager
+from src.core.single_game_manager import SingleGameManager
 from src.ui.renderer import Renderer
 from src.ui.components import Button
 from src.utils.image_crop import slice_image
@@ -18,7 +18,7 @@ class SinglePlayerScreen:
         if self.full_image:
             _, self.image_slices = slice_image(self.full_image, config.BOARD_SIZE, self.size)
 
-        self.gm = GameManager(size=self.size)
+        self.gm = SingleGameManager(size=self.size)
         self.gm.new_game()
         self.show_full_image = False
 

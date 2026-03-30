@@ -1,16 +1,14 @@
 import time
-import random
+from .base_game_manager import BaseGameManager
 from .board_factory import BoardFactory
 
-class SingleGameManager:
+class SingleGameManager(BaseGameManager):
 
     def __init__(self, size: int = 3):
-        self.size = size
+        super().__init__(size)
         self.board = BoardFactory.create(size)
 
-        self.is_playing = False
         self.move_count = 0
-
         self.start_time = 0.0
         self.elapsed_time = 0.0
 
@@ -46,11 +44,6 @@ class SingleGameManager:
         self.start_time = time.time()
         self.elapsed_time = 0.0
 
-    @staticmethod
-    def generate_seed() -> int:
-        """Generate a random seed for synchronized shuffling."""
-        return random.randint(0, 2**63 - 1)
-
     def process_move(self, r: int, c: int) -> bool:
         if not self.is_playing:
             return False
@@ -66,9 +59,7 @@ class SingleGameManager:
 
     def get_formatted_time(self) -> str:
         self.update_time()
-        minutes = int(self.elapsed_time // 60)
-        seconds = int(self.elapsed_time % 60)
-        return f"{minutes:02d}:{seconds:02d}"
+        return self.format_time(self.elapsed_time)
 
     def update_time(self):
         if self.is_playing:

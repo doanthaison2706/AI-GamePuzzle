@@ -8,6 +8,10 @@ class DualGameManager(BaseGameManager):
     """Manages a 2-player competitive game session.
     Uses two Board instances with the same shuffle seed."""
 
+    @property
+    def players(self) -> list[PlayerSlot]:
+        return [self.p1, self.p2]
+
     def __init__(self, size: int, p1: PlayerSlot, p2: PlayerSlot):
         super().__init__(size)
         self.p1 = p1
@@ -15,8 +19,6 @@ class DualGameManager(BaseGameManager):
 
         self.board1 = BoardFactory.create(size)
         self.board2 = BoardFactory.create(size)
-
-        self.start_time = 0.0
 
         # Scoreboard — persists across rounds
         self.score = {p1.player_id: 0, p2.player_id: 0}

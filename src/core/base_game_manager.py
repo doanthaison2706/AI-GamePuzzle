@@ -2,6 +2,7 @@ import time
 import random
 from abc import ABC, abstractmethod
 from .board_factory import BoardFactory
+from .player import PlayerSlot
 
 
 class BaseGameManager(ABC):
@@ -11,6 +12,7 @@ class BaseGameManager(ABC):
     def __init__(self, size: int):
         self.size = size
         self.is_playing = False
+        self.start_time = 0.0
 
     @abstractmethod
     def new_game(self):
@@ -20,6 +22,12 @@ class BaseGameManager(ABC):
     @abstractmethod
     def process_move(self, *args, **kwargs) -> bool:
         """Process a player move."""
+        ...
+
+    @property
+    @abstractmethod
+    def players(self) -> list[PlayerSlot]:
+        """Return a list of all current players."""
         ...
 
     def is_game_over(self) -> bool:

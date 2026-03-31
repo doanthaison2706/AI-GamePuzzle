@@ -7,6 +7,7 @@ from src.utils.image_crop import slice_image
 
 class SinglePlayerScreen:
     def __init__(self, screen, setup_data):
+        raise RuntimeError("Currently this UI is not compatible with the new Core Logic. This must be refactored later.")
         self.screen = screen
         self.renderer = Renderer(screen)
 

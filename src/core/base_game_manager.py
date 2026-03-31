@@ -12,6 +12,7 @@ class BaseGameManager(ABC):
     def __init__(self, size: int):
         self.size = size
         self.is_playing = False
+        self.is_paused = False
         self.start_time = 0.0
 
     @abstractmethod
@@ -29,6 +30,22 @@ class BaseGameManager(ABC):
     def players(self) -> list[PlayerSlot]:
         """Return a list of all current players."""
         ...
+
+    @abstractmethod
+    def get_winner(self) -> PlayerSlot | None:
+        """Returns the winning PlayerSlot if the game is over, otherwise None."""
+        ...
+
+    def pause(self):
+        """Pause the game timer and block moves."""
+        if self.is_playing and not self.is_paused:
+            self.is_paused = True
+
+    def resume(self):
+        """Resume the game timer and allow moves."""
+        if self.is_paused:
+            self.is_paused = False
+            self.start_time = time.time() - self.players[0].elapsed_time
 
     def is_game_over(self) -> bool:
         """Check if the game has ended."""

@@ -36,12 +36,16 @@ class DualGameManager(BaseGameManager):
         self.p1.reset_stats()
         self.p2.reset_stats()
         self.is_playing = True
+        self.is_paused = False
         self.start_time = time.time()
         self.winner = None
 
+    def get_winner(self) -> PlayerSlot | None:
+        return self.winner
+
     def process_move(self, player_id: int, r: int, c: int) -> bool:
         """Process a move for the given player. Returns True if valid move."""
-        if not self.is_playing or self.winner is not None:
+        if not self.is_playing or self.winner is not None or self.is_paused:
             return False
 
         board, player = self._get_board_and_player(player_id)
@@ -61,7 +65,7 @@ class DualGameManager(BaseGameManager):
 
     def update(self):
         """Update time and progress for both players (call each frame)."""
-        if not self.is_playing:
+        if not self.is_playing or self.is_paused:
             return
 
         elapsed = time.time() - self.start_time

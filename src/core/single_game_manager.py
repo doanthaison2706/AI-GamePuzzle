@@ -33,10 +33,16 @@ class SingleGameManager(BaseGameManager):
 
         self.player.reset_stats()
         self.is_playing = True
+        self.is_paused = False
         self.start_time = time.time()
 
+    def get_winner(self) -> PlayerSlot | None:
+        if self.board.is_solved():
+            return self.player
+        return None
+
     def process_move(self, r: int, c: int) -> bool:
-        if not self.is_playing:
+        if not self.is_playing or self.is_paused:
             return False
 
         if self.board.move_by_pos(r, c):
@@ -56,5 +62,5 @@ class SingleGameManager(BaseGameManager):
         return self.format_time(self.player.elapsed_time)
 
     def update_time(self):
-        if self.is_playing:
+        if self.is_playing and not self.is_paused:
             self.player.elapsed_time = time.time() - self.start_time

@@ -8,10 +8,6 @@ class DualGameManager(BaseGameManager):
     """Manages a 2-player competitive game session.
     Uses two Board instances with the same shuffle seed."""
 
-    @property
-    def players(self) -> list[PlayerSlot]:
-        return [self.p1, self.p2]
-
     def __init__(self, size: int, p1: PlayerSlot, p2: PlayerSlot):
         super().__init__(size)
         self.p1 = p1
@@ -23,6 +19,10 @@ class DualGameManager(BaseGameManager):
         # Scoreboard — persists across rounds
         self.score = {p1.player_id: 0, p2.player_id: 0}
         self.winner: PlayerSlot | None = None
+
+    @property
+    def players(self) -> list[PlayerSlot]:
+        return [self.p1, self.p2]
 
     def new_game(self):
         """Start a new round with identical boards for both players."""
@@ -39,9 +39,6 @@ class DualGameManager(BaseGameManager):
         self.is_paused = False
         self.start_time = time.time()
         self.winner = None
-
-    def get_winner(self) -> PlayerSlot | None:
-        return self.winner
 
     def process_move(self, player_id: int, r: int, c: int) -> bool:
         """Process a move for the given player. Returns True if valid move."""
@@ -62,6 +59,9 @@ class DualGameManager(BaseGameManager):
             return True
 
         return False
+
+    def get_winner(self) -> PlayerSlot | None:
+        return self.winner
 
     def update(self):
         """Update time and progress for both players (call each frame)."""

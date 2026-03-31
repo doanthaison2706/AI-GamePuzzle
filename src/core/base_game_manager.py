@@ -15,6 +15,12 @@ class BaseGameManager(ABC):
         self.is_paused = False
         self.start_time = 0.0
 
+    @property
+    @abstractmethod
+    def players(self) -> list[PlayerSlot]:
+        """Return a list of all current players."""
+        ...
+
     @abstractmethod
     def new_game(self):
         """Start a new game round."""
@@ -23,12 +29,6 @@ class BaseGameManager(ABC):
     @abstractmethod
     def process_move(self, *args, **kwargs) -> bool:
         """Process a player move."""
-        ...
-
-    @property
-    @abstractmethod
-    def players(self) -> list[PlayerSlot]:
-        """Return a list of all current players."""
         ...
 
     @abstractmethod

@@ -1,47 +1,65 @@
 import pygame
+from configs import game_config as config
 
 class Button:
-    """
-    Class tạo nút bấm UI tái sử dụng được ở mọi nơi trong game.
-    Thay thế cho JButton của Java.
-    """
-    def __init__(self, x: int, y: int, width: int, height: int, text: str, 
-                 color: tuple, hover_color: tuple, text_color: tuple = (255, 255, 255)):
-        self.rect = pygame.Rect(x, y, width, height)
+    def __init__(self, x, y, w, h, text, color, hover_color, text_color=(255, 255, 255), font_size=28, icon_path=None, radius=20):
+        self.rect = pygame.Rect(x, y, w, h)
         self.text = text
         self.color = color
         self.hover_color = hover_color
         self.text_color = text_color
+        self.font = pygame.font.SysFont("arial", font_size, bold=True)
+        self.radius = radius # Độ bo góc
         
-        # Font chữ mặc định cho nút
-        self.font = pygame.font.SysFont("arial", 20, bold=True)
-        self.is_hovered = False
+        # Xử lý Icon (nếu có)
+        self.icon = None
+        if icon_path:
+            try:
+                # Tải icon gốc
+                orig_icon = pygame.image.load(icon_path).convert_alpha()
+                # Tự động scale icon cho vừa 60% chiều cao của nút
+                icon_h = int(h * 0.6)
+                ratio = orig_icon.get_width() / orig_icon.get_height()
+                icon_w = int(icon_h * ratio)
+                self.icon = pygame.transform.smoothscale(orig_icon, (icon_w, icon_h))
+            except:
+                print(f"⚠️ Không load được icon: {icon_path}")
 
     def draw(self, screen):
-        """Vẽ nút lên màn hình."""
-        # Đổi màu nếu chuột đang trỏ vào 
-        current_color = self.hover_color if self.is_hovered else self.color
-        
-        # Vẽ hình chữ nhật bo góc 
-        pygame.draw.rect(screen, current_color, self.rect, border_radius=8)
-        
-        # Vẽ chữ căn giữa nút
-        text_surf = self.font.render(self.text, True, self.text_color)
-        text_rect = text_surf.get_rect(center=self.rect.center)
-        screen.blit(text_surf, text_rect)
+        # 1. Vẽ nền nút bo tròn (Dùng border_radius xịn xò)
+        mouse_pos = pygame.mouse.get_pos()
+        draw_color = self.hover_color if self.rect.collidepoint(mouse_pos) else self.color
+        pygame.draw.rect(screen, draw_color, self.rect, border_radius=self.radius)
 
-    def handle_event(self, event) -> bool:
-        """
-        Nhận sự kiện từ chuột. 
-        Trả về True nếu nút bị click.
-        """
-        # Kiểm tra xem chuột có đang nằm trong khu vực của nút không
-        if event.type == pygame.MOUSEMOTION:
-            self.is_hovered = self.rect.collidepoint(event.pos)
+        # 2. Chuẩn bị Text surface
+        text_surf = self.font.render(self.text, True, self.text_color)
+        text_rect = text_surf.get_rect()
+
+        # 3. Thuật toán canh chỉnh Icon + Text vào CHÍNH GIỮA (Crucial Logic)
+        if self.icon:
+            gap = 10 # Khoảng cách giữa icon và chữ
+            icon_w = self.icon.get_width()
+            text_w = text_rect.width
+            total_content_w = icon_w + gap + text_w
             
-        # Kiểm tra xem người dùng có click chuột trái vào nút không
+            # Tính tọa độ X bắt đầu để cả cụm content nằm giữa nút
+            start_x = self.rect.x + (self.rect.width - total_content_w) // 2
+            
+            # Vẽ icon
+            icon_y = self.rect.y + (self.rect.height - self.icon.get_height()) // 2
+            screen.blit(self.icon, (start_x, icon_y))
+            
+            # Vẽ text ngay sau icon
+            text_x = start_x + icon_w + gap
+            text_y = self.rect.y + (self.rect.height - text_rect.height) // 2
+            screen.blit(text_surf, (text_x, text_y))
+        else:
+            # Nếu không có icon, vẽ text ở giữa như bình thường
+            text_rect.center = self.rect.center
+            screen.blit(text_surf, text_rect)
+
+    def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.is_hovered:
+            if self.rect.collidepoint(event.pos):
                 return True
-                
         return False

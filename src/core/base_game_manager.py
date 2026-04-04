@@ -13,7 +13,7 @@ class BaseGameManager(ABC):
         self.size = size
         self.is_playing = False
         self.is_paused = False
-        self.start_time = 0.0
+        self.elapsed_time = 0.0
 
     @property
     @abstractmethod
@@ -45,11 +45,17 @@ class BaseGameManager(ABC):
         """Resume the game timer and allow moves."""
         if self.is_paused:
             self.is_paused = False
-            self.start_time = time.time() - self.players[0].elapsed_time
 
     def is_game_over(self) -> bool:
         """Check if the game has ended."""
         return not self.is_playing
+
+    def update_time(self, dt: float = 0.0):
+        """Update game time and sync player stats (call each frame)."""
+        if self.is_playing and not self.is_paused:
+            self.elapsed_time += dt
+            for player in self.players:
+                player.elapsed_time = self.elapsed_time
 
     @staticmethod
     def generate_seed() -> int:

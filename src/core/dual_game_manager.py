@@ -35,9 +35,11 @@ class DualGameManager(BaseGameManager):
 
         self.p1.reset_stats()
         self.p2.reset_stats()
+        self.p1.correct_count = self.board1.count_correct_tiles()
+        self.p2.correct_count = self.board2.count_correct_tiles()
         self.is_playing = True
         self.is_paused = False
-        self.start_time = time.time()
+        self.elapsed_time = 0.0
         self.winner = None
 
     def process_move(self, player_id: int, r: int, c: int) -> bool:
@@ -63,16 +65,6 @@ class DualGameManager(BaseGameManager):
     def get_winner(self) -> PlayerSlot | None:
         return self.winner
 
-    def update(self):
-        """Update time and progress for both players (call each frame)."""
-        if not self.is_playing or self.is_paused:
-            return
-
-        elapsed = time.time() - self.start_time
-        for player, board in [(self.p1, self.board1), (self.p2, self.board2)]:
-            player.elapsed_time = elapsed
-            player.correct_count = board.count_correct_tiles()
-
     def is_game_over(self) -> bool:
         return self.winner is not None
 
@@ -89,9 +81,5 @@ class DualGameManager(BaseGameManager):
 
     def _stop_all(self):
         """Stop game when a winner is determined."""
+        self.update_time()
         self.is_playing = False
-        elapsed = time.time() - self.start_time
-        self.p1.elapsed_time = elapsed
-        self.p2.elapsed_time = elapsed
-        self.p1.correct_count = self.board1.count_correct_tiles()
-        self.p2.correct_count = self.board2.count_correct_tiles()

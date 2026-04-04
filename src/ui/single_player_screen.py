@@ -1,7 +1,7 @@
 import pygame
 import os
 from configs import game_config as config
-from src.core.game_manager import GameManager
+from src.core.single_game_manager import SingleGameManager as GameManager
 from src.ui.renderer import Renderer
 from src.utils.image_crop import slice_image
 
@@ -19,6 +19,7 @@ class SinglePlayerScreen:
 
         self.gm = GameManager(size=self.size)
         self.gm.new_game()
+        self.player = self.gm.players[0]
         self.show_full_image = False
 
         # Biến Kỷ lục (Giả lập tạm, bạn có thể lưu file sau)
@@ -97,7 +98,7 @@ class SinglePlayerScreen:
             if pygame.time.get_ticks() - self.win_start_time >= 1500:
                 result_data = {
                     "time": self.gm.get_formatted_time(),
-                    "moves": self.gm.move_count,
+                    "moves": self.player.move_count,
                     "size": self.size
                 }
                 return "WIN_SINGLE", result_data
@@ -136,7 +137,7 @@ class SinglePlayerScreen:
                     mx, my = event.pos
                     if config.MARGIN_LEFT <= mx <= config.MARGIN_LEFT + config.BOARD_SIZE and \
                        config.MARGIN_TOP <= my <= config.MARGIN_TOP + config.BOARD_SIZE:
-                        t_size = config.BOARD_SIZE // self.gm.size
+                        t_size = config.BOARD_SIZE // self.gm.board.size
                         move_success = self.gm.process_move((my - config.MARGIN_TOP) // t_size, (mx - config.MARGIN_LEFT) // t_size)
 
                 if event.type == pygame.KEYDOWN:
@@ -217,7 +218,7 @@ class SinglePlayerScreen:
 
         self.draw_top_stat_pill(80, stat_y, 140, f"00:00", color_text_blue, color_text_blue) # Thay bằng biến time sau
         self.draw_top_stat_pill(240, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
-        self.draw_top_stat_pill(400, stat_y, 160, f"DI CHUYỂN: {self.gm.move_count}", color_text_red, color_text_red)
+        self.draw_top_stat_pill(400, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
         self.draw_top_stat_pill(580, stat_y, 140, f"KỶ LỤC: {self.best_score}", color_text_red, color_text_red, is_record=True)
 
         # 4. VẼ KHUNG GỖ & BÀN CỜ

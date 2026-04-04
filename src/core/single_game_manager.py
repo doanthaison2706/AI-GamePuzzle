@@ -21,9 +21,10 @@ class SingleGameManager(BaseGameManager):
         self.board.shuffle()
 
         self.player.reset_stats()
+        self.player.correct_count = self.board.count_correct_tiles()
         self.is_playing = True
         self.is_paused = False
-        self.start_time = time.time()
+        self.elapsed_time = 0.0
 
     def process_move(self, r: int, c: int) -> bool:
         if not self.is_playing or self.is_paused:
@@ -34,8 +35,8 @@ class SingleGameManager(BaseGameManager):
             self.player.correct_count = self.board.count_correct_tiles()
 
             if self.board.is_solved():
-                self.is_playing = False
                 self.update_time()
+                self.is_playing = False
 
             return True
 
@@ -49,18 +50,12 @@ class SingleGameManager(BaseGameManager):
     def start_game(self):
         if not self.is_playing and not self.board.is_solved():
             self.is_playing = True
-            self.start_time = time.time() - self.player.elapsed_time
 
     def reset_game(self):
         self.board = BoardFactory.create(self.size)
         self.is_playing = False
-        self.start_time = 0.0
+        self.elapsed_time = 0.0
         self.player.reset_stats()
 
     def get_formatted_time(self) -> str:
-        self.update_time()
         return self.format_time(self.player.elapsed_time)
-
-    def update_time(self):
-        if self.is_playing and not self.is_paused:
-            self.player.elapsed_time = time.time() - self.start_time

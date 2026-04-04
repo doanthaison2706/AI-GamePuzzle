@@ -20,6 +20,7 @@ class SinglePlayerScreen:
         self.gm = GameManager(size=self.size)
         self.gm.new_game()
         self.player = self.gm.players[0]
+        self.board = self.gm.board
         self.show_full_image = False
 
         # Biến Kỷ lục (Giả lập tạm, bạn có thể lưu file sau)
@@ -137,11 +138,11 @@ class SinglePlayerScreen:
                     mx, my = event.pos
                     if config.MARGIN_LEFT <= mx <= config.MARGIN_LEFT + config.BOARD_SIZE and \
                        config.MARGIN_TOP <= my <= config.MARGIN_TOP + config.BOARD_SIZE:
-                        t_size = config.BOARD_SIZE // self.gm.board.size
+                        t_size = config.BOARD_SIZE // self.board.size
                         move_success = self.gm.process_move((my - config.MARGIN_TOP) // t_size, (mx - config.MARGIN_LEFT) // t_size)
 
                 if event.type == pygame.KEYDOWN:
-                    er, ec = self.gm.board.get_empty_pos()
+                    er, ec = self.board.get_empty_pos()
                     tr, tc = er, ec
                     if event.key in (pygame.K_w, pygame.K_UP): tr -= 1
                     elif event.key in (pygame.K_s, pygame.K_DOWN): tr += 1
@@ -236,7 +237,7 @@ class SinglePlayerScreen:
 
         # Gọi Renderer vẽ các mảnh gạch (Tiles) đè lên Khung Gỗ
         # LƯU Ý: Phải xóa các hàm vẽ UI cũ trong Renderer đi, chỉ giữ lại hàm vẽ Tiles thôi nhé!
-        self.renderer.draw_board(self.gm.board.matrix, self.gm.size, self.image_slices, self.full_image, self.show_full_image)
+        self.renderer.draw_board(self.board.matrix, self.gm.size, self.image_slices, self.full_image, self.show_full_image)
 
         # Nền mờ nếu đang Tạm dừng
         if self.is_paused:

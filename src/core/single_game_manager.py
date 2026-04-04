@@ -17,7 +17,6 @@ class SingleGameManager(BaseGameManager):
         return [self.player]
 
     def new_game(self):
-        self.board = BoardFactory.create(self.size)
         self.board.shuffle()
 
         self.player.reset_stats()
@@ -52,7 +51,6 @@ class SingleGameManager(BaseGameManager):
             self.is_playing = True
 
     def reset_game(self):
-        self.board = BoardFactory.create(self.size)
         self.is_playing = False
         self.elapsed_time = 0.0
         self.player.reset_stats()

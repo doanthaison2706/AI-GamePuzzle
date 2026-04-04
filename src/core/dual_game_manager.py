@@ -28,8 +28,6 @@ class DualGameManager(BaseGameManager):
         """Start a new round with identical boards for both players."""
         seed = self.generate_seed()
 
-        self.board1 = BoardFactory.create(self.size)
-        self.board2 = BoardFactory.create(self.size)
         self.board1.shuffle(seed=seed)
         self.board2.shuffle(seed=seed)
 

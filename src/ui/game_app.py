@@ -21,6 +21,7 @@ class GameApp:
         self.last_setup_data = None
 
     def run(self):
+        dt = 0.0
         while True:
             events = pygame.event.get()
             for event in events:
@@ -54,7 +55,7 @@ class GameApp:
                     next_state = result
                     result_data = None
 
-                self.current_screen.update()
+                self.current_screen.update(dt)
 
                 if next_state == "MENU":
                     self.state = "MAIN_MENU"
@@ -85,4 +86,4 @@ class GameApp:
             self.current_screen.render()
 
             pygame.display.flip()
-            self.clock.tick(config.FPS)
+            dt = self.clock.tick(config.FPS) / 1000.0

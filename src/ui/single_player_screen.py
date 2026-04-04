@@ -162,9 +162,9 @@ class SinglePlayerScreen:
 
         return "PLAYING"
 
-    def update(self):
+    def update(self, dt: float = 0.0):
         if self.gm and not self.is_paused:
-            self.gm.update_time()
+            self.gm.update_time(dt)
 
     def draw_gradient_rect(self, surface, rect, color_top, color_bottom, radius, shadow_color=None, shadow_offset=6, border_color=None):
         """Hàm vẽ nút xịn xò"""
@@ -217,7 +217,7 @@ class SinglePlayerScreen:
         color_text_blue = (50, 100, 150)
         color_text_red = (200, 80, 100)
 
-        self.draw_top_stat_pill(80, stat_y, 140, f"00:00", color_text_blue, color_text_blue) # Thay bằng biến time sau
+        self.draw_top_stat_pill(80, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue) # Lấy thời gian từ logic game
         self.draw_top_stat_pill(240, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
         self.draw_top_stat_pill(400, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
         self.draw_top_stat_pill(580, stat_y, 140, f"KỶ LỤC: {self.best_score}", color_text_red, color_text_red, is_record=True)

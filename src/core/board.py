@@ -49,6 +49,7 @@ class Board:
         self.solved_board = self._generate_solved_board()
         self.matrix = [row[:] for row in self.solved_board]
         self._empty_pos = (size - 1, size - 1)
+        self.history: list[tuple[int, int]] = []
 
     def _generate_solved_board(self) -> list[list[int]]:
         board = []
@@ -82,7 +83,7 @@ class Board:
                 moves.append(d)
         return moves
 
-    def move_by_pos(self, r: int, c: int) -> bool:
+    def move_by_pos(self, r: int, c: int, record: bool = True) -> bool:
         """Move to (r, c) if it's adjacent to the empty cell."""
         if not (0 <= r < self.size and 0 <= c < self.size):
             return False
@@ -90,12 +91,14 @@ class Board:
         er, ec = self._empty_pos
         # Check if (r, c) is adjacent to the empty cell (Manhattan distance = 1)
         if abs(r - er) + abs(c - ec) == 1:
+            if record:
+                self.history.append((er, ec))
             self.matrix[er][ec], self.matrix[r][c] = self.matrix[r][c], self.matrix[er][ec]
             self._empty_pos = (r, c)
             return True
         return False
 
-    def move(self, direction: Direction) -> bool:
+    def move(self, direction: Direction, record: bool = True) -> bool:
         """Move the empty cell in the given direction.
         Returns True if valid, False otherwise."""
         er, ec = self._empty_pos
@@ -104,9 +107,18 @@ class Board:
         if not (0 <= nr < self.size and 0 <= nc < self.size):
             return False
 
+        if record:
+            self.history.append((er, ec))
         self.matrix[er][ec], self.matrix[nr][nc] = self.matrix[nr][nc], self.matrix[er][ec]
         self._empty_pos = (nr, nc)
         return True
+
+    def undo(self) -> bool:
+        """Revert the last move using the history stack."""
+        if not self.history:
+            return False
+        er, ec = self.history.pop()
+        return self.move_by_pos(er, ec, record=False)
 
     def shuffle(self, seed: int | str | None = None):
         """Scramble by moving the empty cell randomly from the solved state.
@@ -118,6 +130,7 @@ class Board:
 
         self.matrix = [row[:] for row in self.solved_board]
         self._empty_pos = (self.size - 1, self.size - 1)
+        self.history.clear()
         rng = random.Random(seed)
 
         prev_direction = None
@@ -129,7 +142,7 @@ class Board:
                     moves.remove(opposite)
 
             chosen = rng.choice(moves)
-            self.move(chosen)
+            self.move(chosen, record=False)
             prev_direction = chosen
 
     def _seed_from_string(text: str) -> int:

@@ -41,6 +41,16 @@ class SingleGameManager(BaseGameManager):
 
         return False
 
+    def undo(self) -> bool:
+        if getattr(self, 'winner', None) is not None or not self.is_playing or self.is_paused:
+            return False
+
+        if self.board.undo():
+            self.player.move_count = max(0, self.player.move_count - 1)
+            self.player.correct_count = self.board.count_correct_tiles()
+            return True
+        return False
+
     def get_winner(self) -> PlayerSlot | None:
         if self.board.is_solved():
             return self.player

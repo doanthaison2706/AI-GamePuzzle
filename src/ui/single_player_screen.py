@@ -118,7 +118,9 @@ class SinglePlayerScreen:
                 mouse_pos = event.pos
                 if self.buttons[0]["rect"].collidepoint(mouse_pos): pass # Gợi ý
                 if self.buttons[1]["rect"].collidepoint(mouse_pos): pass # AI Giải
-                if self.buttons[2]["rect"].collidepoint(mouse_pos): pass # Hoàn tác
+                if self.buttons[2]["rect"].collidepoint(mouse_pos):
+                    if self.gm.undo():
+                        if self.move_sound: self.move_sound.play()
                 if self.buttons[3]["rect"].collidepoint(mouse_pos): self.gm.new_game() # Chơi lại
                 if self.buttons[4]["rect"].collidepoint(mouse_pos): self.is_paused = not self.is_paused # Tạm dừng
                 if self.buttons[5]["rect"].collidepoint(mouse_pos): return "MENU" # Thoát

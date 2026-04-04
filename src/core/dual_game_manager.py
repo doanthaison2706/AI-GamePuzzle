@@ -60,6 +60,19 @@ class DualGameManager(BaseGameManager):
 
         return False
 
+    def undo(self, player_id: int) -> bool:
+        """Undo a move for the given player. Returns True if successful."""
+        if not self.is_playing or self.winner is not None or self.is_paused:
+            return False
+
+        board, player = self._get_board_and_player(player_id)
+
+        if board.undo():
+            player.move_count = max(0, player.move_count - 1)
+            player.correct_count = board.count_correct_tiles()
+            return True
+        return False
+
     def get_winner(self) -> PlayerSlot | None:
         return self.winner
 

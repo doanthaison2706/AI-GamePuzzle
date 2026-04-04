@@ -36,6 +36,11 @@ class BaseGameManager(ABC):
         """Returns the winning PlayerSlot if the game is over, otherwise None."""
         ...
 
+    @abstractmethod
+    def undo(self, *args, **kwargs) -> bool:
+        """Undo the last move."""
+        ...
+
     def pause(self):
         """Pause the game timer and block moves."""
         if self.is_playing and not self.is_paused:

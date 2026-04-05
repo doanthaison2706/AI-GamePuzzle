@@ -29,3 +29,19 @@ FPS = 60
 BG_COLOR = (245, 245, 245)
 TEXT_COLOR = (50, 50, 50)
 WHITE = (255, 255, 255)
+
+# --- DUAL PLAYER LAYOUT ---
+# Cửa sổ chơi đôi rộng gấp đôi cửa sổ chơi đơn
+DUAL_WINDOW_WIDTH = int(WINDOW_HEIGHT * 1.6)
+
+# Mỗi board chiếm ~42% chiều rộng cửa sổ đôi (để còn khoảng cách giữa)
+DUAL_BOARD_SIZE = int(DUAL_WINDOW_WIDTH * 0.42)
+
+# Cách đỉnh cửa sổ 22% (giống chơi đơn)
+DUAL_MARGIN_TOP = int(WINDOW_HEIGHT * 0.22)
+
+# Lề trái của P1 board (cách mép trái 3%)
+DUAL_P1_LEFT = int(DUAL_WINDOW_WIDTH * 0.03)
+
+# Lề trái của P2 board (cách mép phải 3%)
+DUAL_P2_LEFT = int(DUAL_WINDOW_WIDTH * 0.55)

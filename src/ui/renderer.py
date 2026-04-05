@@ -45,28 +45,32 @@ class Renderer:
         text_rect = text_surf.get_rect(center=rect.center)
         self.screen.blit(text_surf, text_rect)
 
-    def draw_board(self, matrix, size: int, image_slices: dict = None, full_image=None, show_full: bool = False):
-        """Vẽ bàn cờ. Đã nâng cấp để nhận cả ảnh cắt và tính năng giữ phím Space."""
+    def draw_board(self, matrix, size: int, image_slices: dict = None, full_image=None, show_full: bool = False,
+                   offset_x: int = 0, offset_y: int = 0, board_size: int = None):
+        """Vẽ bàn cờ. Hỗ trợ offset để vẽ tại vị trí tuỳ ý (dùng cho chế độ chơi đôi)."""
+        b_size = board_size if board_size is not None else config.BOARD_SIZE
+        margin_left = config.MARGIN_LEFT + offset_x
+        margin_top = config.MARGIN_TOP + offset_y
+
         if show_full and full_image:
-            self.screen.blit(full_image, (config.MARGIN_LEFT, config.MARGIN_TOP))
+            scaled = pygame.transform.smoothscale(full_image, (b_size, b_size))
+            self.screen.blit(scaled, (margin_left, margin_top))
             pygame.draw.rect(self.screen, config.TEXT_COLOR,
-                             (config.MARGIN_LEFT, config.MARGIN_TOP, config.BOARD_SIZE, config.BOARD_SIZE), 3)
+                             (margin_left, margin_top, b_size, b_size), 3)
             return
 
-        tile_size = config.BOARD_SIZE // size
+        tile_size = b_size // size
 
         for r in range(size):
             for c in range(size):
                 value = matrix[r][c]
-                x = config.MARGIN_LEFT + c * tile_size
-                y = config.MARGIN_TOP + r * tile_size
+                x = margin_left + c * tile_size
+                y = margin_top + r * tile_size
                 rect = pygame.Rect(x, y, tile_size, tile_size)
 
                 if value != 0:
-                    # Nếu có ảnh cắt -> Vẽ ảnh
                     if image_slices and value in image_slices:
                         self.screen.blit(image_slices[value], (x, y))
-                    # Nếu không có ảnh -> Vẽ Gradient như cũ
                     else:
                         color = self.get_gradient_color(value, size)
                         pygame.draw.rect(self.screen, color, rect)
@@ -74,9 +78,9 @@ class Renderer:
                     pygame.draw.rect(self.screen, config.WHITE, rect, 2)
                     self.draw_text_with_shadow(str(value), rect)
                 else:
-                    # Ô trống
                     pygame.draw.rect(self.screen, (220, 220, 220), rect)
                     pygame.draw.rect(self.screen, (200, 200, 200), rect, 2)
+
 
     def draw_ui(self, move_count: int, time_str: str, is_playing: bool):
         """Vẽ thông tin game (Số bước, Thời gian, Thông báo Thắng)."""

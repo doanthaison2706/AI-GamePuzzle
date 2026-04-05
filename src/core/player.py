@@ -19,3 +19,4 @@ class PlayerSlot:
         self.move_count = 0
         self.elapsed_time = 0.0
         self.correct_count = 0  # Number of tiles in correct position
+        self.undo_count = 0     # Number of undos performed this round

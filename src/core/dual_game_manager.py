@@ -70,6 +70,7 @@ class DualGameManager(BaseGameManager):
         if board.undo():
             player.move_count = max(0, player.move_count - 1)
             player.correct_count = board.count_correct_tiles()
+            player.undo_count += 1
             return True
         return False
 

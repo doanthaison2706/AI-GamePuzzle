@@ -1,5 +1,6 @@
 import random
 import hashlib
+from collections import deque
 from enum import Enum
 
 
@@ -42,14 +43,15 @@ class Direction(Enum):
 class Board:
     """Manages the N-Puzzle board matrix logic."""
 
-    def __init__(self, size: int):
+    def __init__(self, size: int, max_undos: int = 10):
         self.size = size
         self.total_tiles = size * size - 1
         self.num_shuffles = 100
+        self.max_undos = max_undos
         self.solved_board = self._generate_solved_board()
         self.matrix = [row[:] for row in self.solved_board]
         self._empty_pos = (size - 1, size - 1)
-        self.history: list[tuple[int, int]] = []
+        self.history: deque[tuple[int, int]] = deque(maxlen=max_undos)
 
     def _generate_solved_board(self) -> list[list[int]]:
         board = []

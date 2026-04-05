@@ -48,6 +48,7 @@ class SingleGameManager(BaseGameManager):
         if self.board.undo():
             self.player.move_count = max(0, self.player.move_count - 1)
             self.player.correct_count = self.board.count_correct_tiles()
+            self.player.undo_count += 1
             return True
         return False
 

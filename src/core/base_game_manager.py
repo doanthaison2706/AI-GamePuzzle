@@ -73,3 +73,7 @@ class BaseGameManager(ABC):
         minutes = int(elapsed // 60)
         seconds = int(elapsed % 60)
         return f"{minutes:02d}:{seconds:02d}"
+
+    def get_formatted_time(self) -> str:
+        """Return the current elapsed time as a formatted MM:SS string."""
+        return self.format_time(self.elapsed_time)

@@ -65,6 +65,3 @@ class SingleGameManager(BaseGameManager):
         self.is_playing = False
         self.elapsed_time = 0.0
         self.player.reset_stats()
-
-    def get_formatted_time(self) -> str:
-        return self.format_time(self.player.elapsed_time)

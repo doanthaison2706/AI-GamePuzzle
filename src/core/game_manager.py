@@ -1,5 +1,6 @@
 import time
 from src.core.board import Board
+from src.ai.bot import AIBot
 
 class GameManager:
     """
@@ -12,9 +13,57 @@ class GameManager:
         
         self.is_playing = False 
         self.move_count = 0
-        
         self.start_time = 0.0
         self.elapsed_time = 0.0
+        
+        # Thêm biến lưu trữ bộ não AI (Khởi tạo rỗng để tiết kiệm RAM)
+        self.hint_bot = None
+        self.ai_helper = None
+
+    def execute_hint_move(self) -> bool:
+        """
+        Kích hoạt AI để đi hộ 1 bước.
+        Giao diện (UI) chỉ cần gọi hàm này khi người chơi bấm nút "Gợi ý".
+        Trả về True nếu đi thành công.
+        """
+        if not self.is_playing:
+            return False
+            
+        # Lazy Loading: Chỉ khởi tạo Bot ở lần bấm Gợi ý đầu tiên
+        if self.hint_bot is None:
+            from src.ai.bot import AIBot # Import trễ để chống lỗi vòng lặp (circular import)
+            print("Đang khởi động bộ não AI...")
+            self.hint_bot = AIBot(self.size, difficulty="hard") # Gợi ý thì luôn dùng đường đi tối ưu nhất
+            
+        # Lấy tọa độ ô trống
+        er, ec = self.board.get_empty_pos()
+        
+        # Hỏi AI xem nên đi hướng nào (dr, dc)
+        dr, dc = self.hint_bot.get_next_move(self.board.matrix, er, ec)
+        
+        # Nếu AI trả về hướng đi hợp lệ (không phải fallback 0,0)
+        if dr != 0 or dc != 0:
+            target_r = er + dr
+            target_c = ec + dc
+            return self.process_move(target_r, target_c) # Gọi thẳng hàm di chuyển sẵn có của bạn
+            
+        return False
+    
+    def get_ai_hint(self):
+        """Phục vụ nút Gợi ý hoặc Auto-solve trong chơi đơn. Luôn là Hard."""
+        if not self.is_playing: return False
+        
+        if not hasattr(self, 'ai_helper') or self.ai_helper is None:
+            from src.ai.bot import AIBot
+            print("Đang nạp bộ não AI...")
+            self.ai_helper = AIBot(self.size, "hard")
+            
+        er, ec = self.board.get_empty_pos()
+        dr, dc = self.ai_helper.get_next_move(self.board.matrix, er, ec)
+        
+        if dr != 0 or dc != 0:
+            return self.process_move(er + dr, ec + dc)
+        return False
 
     def start_game(self):
         """Tiếp tục trò chơi (tương đương nút Resume/Start)."""

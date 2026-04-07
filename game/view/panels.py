@@ -65,17 +65,8 @@ class ControlPanel(tk.Frame):
         self.new_game_btn = tk.Button(row, text="New Game", bg="#FFB6C1", **btn_cfg)
         self.new_game_btn.pack(side=tk.LEFT, padx=5)
 
-        self.ai_support_btn = tk.Button(row, text="AI Hint", bg="#ADD8E6", **btn_cfg)
-        self.ai_support_btn.pack(side=tk.LEFT, padx=5)
-
-        self.ai_solve_btn = tk.Button(row, text="AI Solve", bg="#98D8C8", **btn_cfg)
-        self.ai_solve_btn.pack(side=tk.LEFT, padx=5)
-
         self.out_game_btn = tk.Button(row, text="Out Game", bg="#DDA0DD", **btn_cfg)
         self.out_game_btn.pack(side=tk.LEFT, padx=5)
-
-        self.stop_ai_btn = tk.Button(row, text="Stop AI", bg="#F0E68C", **btn_cfg)
-        self.stop_ai_btn.pack(side=tk.LEFT, padx=5)
 
 
 class GameBoardPanel(tk.Frame):

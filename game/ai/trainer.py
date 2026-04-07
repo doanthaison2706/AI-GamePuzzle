@@ -1,63 +1,62 @@
-"""Q-Learning trainer for the n-puzzle agent."""
+"""
+Train an SB3 agent on the n-puzzle.
+Run this script from the terminal to train longer sessions:
+Example: python game/ai/trainer.py --size 4 --timesteps 1000000
+"""
 
 import os
 import sys
+import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from stable_baselines3 import PPO
 from game.ai.puzzle_env import PuzzleEnv
-from game.ai.rl_agent import RLAgent
 
-
-def main():
-    env = PuzzleEnv(3)
-    agent = RLAgent()
+def train_size(size: int, timesteps: int):
+    # No render_mode to run silently in the background
+    env = PuzzleEnv(size=size, render_mode=None)
 
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    q_table_path = os.path.join(base_dir, "res", "data", "qtable.pkl")
+    model_path = os.path.join(base_dir, "res", "data", f"ppo_puzzle_{size}x{size}")
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
+    print(f"\n--- Training {size}x{size} Puzzle ---")
     try:
-        agent.load_q_table(q_table_path)
-        print("Loaded existing Q-Table.")
+        model = PPO.load(model_path, env=env)
+        print(f"Loaded existing PPO model for {size}x{size}.")
     except Exception:
-        print("No existing Q-Table, starting fresh.")
+        print(f"No existing model found for {size}x{size}, starting fresh with PPO.")
+        model = PPO("MlpPolicy", env, verbose=1)
 
-    epsilon = 1.0
-    epsilon_decay = 0.995
-    epsilon_min = 0.05
-    total_reward = 0
+    print(f"Starting training for {timesteps} timesteps...")
+    try:
+        model.learn(total_timesteps=timesteps)
+    except KeyboardInterrupt:
+        print("\nTraining interrupted by user. Saving current progress...")
 
-    for episode in range(20000):
-        env.reset()
-        state = env.get_state()
-        steps = 0
-        agent.epsilon = epsilon
+    model.save(model_path)
+    print(f"Model for {size}x{size} saved to {model_path}!")
 
-        while True:
-            action = agent.choose_action(state)
-            reward = env.step(action)
-            next_state = env.get_state()
-            agent.update(state, action, reward, next_state)
-            state = next_state
-            steps += 1
+def main():
+    parser = argparse.ArgumentParser(description="Train PPO RL Agent for N-Puzzle")
+    parser.add_argument("--size", type=int, default=3, choices=[3, 4, 5], 
+                        help="Board size to train (3, 4, or 5). Default is 3.")
+    parser.add_argument("--timesteps", type=int, default=50000, 
+                        help="Number of timesteps to train. Default is 50000. Use >1000000 for good 4x4 results.")
+    parser.add_argument("--all", action="store_true", 
+                        help="Train all sizes (3, 4, and 5) sequentially using the timesteps specified.")
+    
+    args = parser.parse_args()
 
-            if reward == 100 or steps > 300:
-                break
-
-        if epsilon > epsilon_min:
-            epsilon *= epsilon_decay
-
-        if env.is_solved():
-            total_reward += 1
-
-        if episode % 500 == 0 and episode != 0:
-            print(f"Episode {episode} | Solved: {total_reward} | Epsilon: {epsilon:.4f}")
-            total_reward = 0
-
-    agent.save_q_table(q_table_path)
-    print("Q-Table saved!")
-    print("Training session done!")
-
+    if args.all:
+        print(f"Training ALL sizes (3x3, 4x4, 5x5) for {args.timesteps} timesteps each...")
+        for s in [3, 4, 5]:
+            train_size(s, args.timesteps)
+    else:
+        train_size(args.size, args.timesteps)
+        
+    print("\nTraining session completed. You can safely close this terminal.")
 
 if __name__ == "__main__":
     main()

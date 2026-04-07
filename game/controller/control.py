@@ -5,7 +5,7 @@ from game.sound_manager.sound_effect import SoundEffect
 from game.controller.time_controller import TimeController
 from game.controller.puzzle_board_manager import PuzzleBoardManager
 from game.controller.game_manager import GameManager
-from game.controller.ai_controller import AIController
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -28,7 +28,7 @@ class Control:
         self.time_controller = TimeController(self)
         self.puzzle_board_manager = PuzzleBoardManager(self)
         self.game_manager = GameManager(self)
-        self.ai_controller = AIController(self)
+
 
         self.puzzle_board_manager.add_board()
 
@@ -107,11 +107,4 @@ class Control:
     def new_game(self):
         self.game_manager.new_game()
 
-    def ai_support(self):
-        self.ai_controller.show_hint()
 
-    def ai_solve(self):
-        self.ai_controller.solve_with_rl()
-
-    def stop_ai(self):
-        self.ai_controller.stop_ai()

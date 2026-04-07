@@ -43,9 +43,7 @@ class PuzzleWindow(tk.Toplevel):
 
         self.control_panel.new_game_btn.config(command=self.action.on_new_game)
         self.control_panel.out_game_btn.config(command=self.action.on_out_game)
-        self.control_panel.ai_support_btn.config(command=self.action.on_ai_support)
-        self.control_panel.ai_solve_btn.config(command=self.action.on_ai_solve)
-        self.control_panel.stop_ai_btn.config(command=self.action.on_stop_ai)
+
 
         # Start with a shuffled, playable game as soon as the window opens
         self.control.new_game()
@@ -60,7 +58,7 @@ class PuzzleWindow(tk.Toplevel):
         self.control.reset_game()
 
     def _on_close(self):
-        self.control.stop_ai()
+
         self.control.time_controller.stop()
         self.destroy()
         self.main_menu.deiconify()

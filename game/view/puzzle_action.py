@@ -18,16 +18,6 @@ class PuzzleAction:
             parent=self.pz,
         )
         if result:
-            self.pz.control.stop_ai()
             self.pz.control.time_controller.stop()
             self.pz.destroy()
             self.pz.main_menu.deiconify()
-
-    def on_ai_support(self):
-        self.pz.control.ai_support()
-
-    def on_ai_solve(self):
-        self.pz.control.ai_solve()
-
-    def on_stop_ai(self):
-        self.pz.control.stop_ai()

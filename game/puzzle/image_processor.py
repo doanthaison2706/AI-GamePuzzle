@@ -63,7 +63,7 @@ def make_default_tiles(n: int, tile_size: int) -> list:
     Each tile has a distinct hue and a bold number in the centre.
     """
     total = n * n - 1
-    font  = pygame.font.SysFont("Arial", tile_size // 3, bold=True)
+    font  = pygame.font.SysFont("Georgia", tile_size // 3, bold=True)
     tiles = []
     for i in range(total):
         surf  = pygame.Surface((tile_size, tile_size))

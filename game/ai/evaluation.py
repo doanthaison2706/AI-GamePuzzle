@@ -1,27 +1,27 @@
-"""Evaluate a trained Q-Learning agent on the n-puzzle."""
+"""Evaluate an SB3 agent on the n-puzzle."""
 
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from stable_baselines3 import PPO
 from game.ai.puzzle_env import PuzzleEnv
-from game.ai.rl_agent import RLAgent
 
 
-def evaluate(agent: RLAgent, env: PuzzleEnv, episodes: int):
+def evaluate(model, env, episodes: int):
     solved = 0
     total_steps = 0
 
     for episode in range(episodes):
-        env.reset()
-        state = env.get_state()
+        obs, _ = env.reset()
         steps = 0
+        done = False
 
-        while not env.is_solved() and steps <= 500:
-            action = agent.choose_action(state)
-            env.step(action)
-            state = env.get_state()
+        while not done and steps <= 500:
+            action, _states = model.predict(obs, deterministic=True)
+            obs, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
             steps += 1
 
         if env.is_solved():
@@ -34,14 +34,19 @@ def evaluate(agent: RLAgent, env: PuzzleEnv, episodes: int):
 
 
 def main():
-    env = PuzzleEnv(3)
-    agent = RLAgent()
-
+    env = PuzzleEnv(size=3, render_mode="human")
+    
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    q_table_path = os.path.join(base_dir, "res", "data", "qtable.pkl")
+    model_path = os.path.join(base_dir, "res", "data", "ppo_puzzle")
 
-    agent.load_q_table(q_table_path)
-    evaluate(agent, env, 10000)
+    try:
+        model = PPO.load(model_path, env=env)
+        print("Loaded PPO model for evaluation.")
+    except Exception as e:
+        print(f"Could not load PPO model at {model_path}. Error: {e}")
+        return
+
+    evaluate(model, env, 10)
 
 
 if __name__ == "__main__":

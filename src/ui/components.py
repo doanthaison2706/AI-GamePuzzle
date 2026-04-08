@@ -1,65 +1,77 @@
+"""
+components.py
+-------------
+Shared UI widgets used across all screens.
+"""
+
 import pygame
-from configs import game_config as config
+from configs.game_config import BTN_COLOR, BTN_HOVER, BTN_ACTIVE, BTN_TEXT
+
 
 class Button:
-    def __init__(self, x, y, w, h, text, color, hover_color, text_color=(255, 255, 255), font_size=28, icon_path=None, radius=20):
-        self.rect = pygame.Rect(x, y, w, h)
-        self.text = text
-        self.color = color
-        self.hover_color = hover_color
-        self.text_color = text_color
-        self.font = pygame.font.SysFont("arial", font_size, bold=True)
-        self.radius = radius # Độ bo góc
+    """A clickable rectangular button rendered with pygame."""
 
-        # Xử lý Icon (nếu có)
-        self.icon = None
-        if icon_path:
-            try:
-                # Tải icon gốc
-                orig_icon = pygame.image.load(icon_path).convert_alpha()
-                # Tự động scale icon cho vừa 60% chiều cao của nút
-                icon_h = int(h * 0.6)
-                ratio = orig_icon.get_width() / orig_icon.get_height()
-                icon_w = int(icon_h * ratio)
-                self.icon = pygame.transform.smoothscale(orig_icon, (icon_w, icon_h))
-            except:
-                print(f"⚠️ Không load được icon: {icon_path}")
+    def __init__(
+        self,
+        rect,
+        text: str,
+        font,
+        color=None,
+        hover_color=None,
+        active_color=None,
+        text_color=None,
+        border_radius: int = 8,
+    ):
+        self.rect         = pygame.Rect(rect)
+        self.text         = text
+        self.font         = font
+        self.color        = color        if color        is not None else BTN_COLOR
+        self.hover_color  = hover_color  if hover_color  is not None else BTN_HOVER
+        self.active_color = active_color if active_color is not None else BTN_ACTIVE
+        self.text_color   = text_color   if text_color   is not None else BTN_TEXT
+        self.border_radius = border_radius
+        self._held = False
 
-    def draw(self, screen):
-        # 1. Vẽ nền nút bo tròn (Dùng border_radius xịn xò)
-        mouse_pos = pygame.mouse.get_pos()
-        draw_color = self.hover_color if self.rect.collidepoint(mouse_pos) else self.color
-        pygame.draw.rect(screen, draw_color, self.rect, border_radius=self.radius)
+    # ─── Public API ───────────────────────────────────────────────────────────
 
-        # 2. Chuẩn bị Text surface
-        text_surf = self.font.render(self.text, True, self.text_color)
-        text_rect = text_surf.get_rect()
-
-        # 3. Thuật toán canh chỉnh Icon + Text vào CHÍNH GIỮA (Crucial Logic)
-        if self.icon:
-            gap = 10 # Khoảng cách giữa icon và chữ
-            icon_w = self.icon.get_width()
-            text_w = text_rect.width
-            total_content_w = icon_w + gap + text_w
-
-            # Tính tọa độ X bắt đầu để cả cụm content nằm giữa nút
-            start_x = self.rect.x + (self.rect.width - total_content_w) // 2
-
-            # Vẽ icon
-            icon_y = self.rect.y + (self.rect.height - self.icon.get_height()) // 2
-            screen.blit(self.icon, (start_x, icon_y))
-
-            # Vẽ text ngay sau icon
-            text_x = start_x + icon_w + gap
-            text_y = self.rect.y + (self.rect.height - text_rect.height) // 2
-            screen.blit(text_surf, (text_x, text_y))
-        else:
-            # Nếu không có icon, vẽ text ở giữa như bình thường
-            text_rect.center = self.rect.center
-            screen.blit(text_surf, text_rect)
-
-    def handle_event(self, event):
+    def handle_event(self, event) -> bool:
+        """
+        Feed a single pygame event.
+        Returns True on the frame the button is released (clicked).
+        """
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
+                self._held = True
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if self._held and self.rect.collidepoint(event.pos):
+                self._held = False
                 return True
+            self._held = False
         return False
+
+    def draw(self, surface, mouse_pos=None) -> None:
+        if mouse_pos is None:
+            mouse_pos = pygame.mouse.get_pos()
+
+        hovered = self.rect.collidepoint(mouse_pos)
+        if self._held and hovered:
+            bg = self.active_color
+        elif hovered:
+            bg = self.hover_color
+        else:
+            bg = self.color
+
+        # Draw outer neon glow border (2px larger rect, brighter tinted color)
+        glow_color = tuple(min(255, int(c * 1.6)) for c in bg)
+        glow_rect  = self.rect.inflate(4, 4)
+        pygame.draw.rect(surface, glow_color, glow_rect, 2,
+                         border_radius=self.border_radius + 2)
+
+        pygame.draw.rect(surface, bg, self.rect, border_radius=self.border_radius)
+
+        # Inner bright highlight rim (1px, white-tinted)
+        pygame.draw.rect(surface, (255, 255, 255, 30), self.rect, 1,
+                         border_radius=self.border_radius)
+
+        label = self.font.render(self.text, True, self.text_color)
+        surface.blit(label, label.get_rect(center=self.rect.center))

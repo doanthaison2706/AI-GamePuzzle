@@ -126,7 +126,6 @@ class GameApp:
                     self.current_screen = MainMenuScreen(self.screen)
 
             # --- VẼ GIAO DIỆN ---
-            self.screen.fill(config.BG_COLOR)
             self.current_screen.render()
 
             pygame.display.flip()

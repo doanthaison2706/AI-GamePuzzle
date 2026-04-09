@@ -34,20 +34,13 @@ class MainMenuScreen:
         bw, bh = 260, 56
         cx     = W // 2
 
-        self.btn_single = Button(
-            (cx - bw // 2, 450, bw, bh), "C H Ơ I   Đ Ơ N", self._font_btn,
+        self.btn_play = Button(
+            (cx - bw // 2, 460, bw, bh), "P L A Y", self._font_btn,
             color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE,
             border_radius=28
         )
-        self.btn_multi = Button(
-            (cx - bw // 2, 525, bw, bh), "Đ Ố I   K H Á N G", self._font_btn,
-            color=(max(0, P1_COLOR[0]-20), max(0, P1_COLOR[1]-20), max(0, P1_COLOR[2]-20)),
-            hover_color=P1_COLOR,
-            active_color=(max(0, P1_COLOR[0]-40), max(0, P1_COLOR[1]-40), max(0, P1_COLOR[2]-40)),
-            border_radius=28
-        )
         self.btn_exit = Button(
-            (cx - bw // 2, 600, bw, bh), "T H O Á T", self._font_btn,
+            (cx - bw // 2, 540, bw, bh), "T H O Á T", self._font_btn,
             color=(max(0, P2_COLOR[0]-20), max(0, P2_COLOR[1]-20), max(0, P2_COLOR[2]-20)),
             hover_color=P2_COLOR,
             active_color=(max(0, P2_COLOR[0]-40), max(0, P2_COLOR[1]-40), max(0, P2_COLOR[2]-40)),
@@ -60,10 +53,8 @@ class MainMenuScreen:
 
     def handle_events(self, events):
         for event in events:
-            if self.btn_single.handle_event(event):
-                return "SETUP_SINGLE", None
-            if self.btn_multi.handle_event(event):
-                return "SETUP_MULTI", None
+            if self.btn_play.handle_event(event):
+                return "SETUP", None
             if self.btn_exit.handle_event(event):
                 pygame.quit()
                 sys.exit()
@@ -84,8 +75,7 @@ class MainMenuScreen:
         divider.fill((*MUTED_TEXT, 100))
         self.screen.blit(divider, divider.get_rect(center=(W // 2, 370)))
 
-        self.btn_single.draw(self.screen, mouse)
-        self.btn_multi.draw(self.screen, mouse)
+        self.btn_play.draw(self.screen, mouse)
         self.btn_exit.draw(self.screen, mouse)
 
     # ─── Private ──────────────────────────────────────────────────────────────

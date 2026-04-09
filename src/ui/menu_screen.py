@@ -14,7 +14,7 @@ from configs.game_config import (
     BTN_COLOR, BTN_HOVER, BTN_ACTIVE,
     P1_COLOR, P2_COLOR,
 )
-from src.ui.components import Button
+from src.ui.components import RoundedButton
 from src.ui.background import ModernBackground
 
 TITLE = "P U Z Z L E"
@@ -34,17 +34,15 @@ class MainMenuScreen:
         bw, bh = 260, 56
         cx     = W // 2
 
-        self.btn_play = Button(
+        self.btn_play = RoundedButton(
             (cx - bw // 2, 460, bw, bh), "P L A Y", self._font_btn,
             color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE,
-            border_radius=28
         )
-        self.btn_exit = Button(
+        self.btn_exit = RoundedButton(
             (cx - bw // 2, 540, bw, bh), "T H O Á T", self._font_btn,
             color=(max(0, P2_COLOR[0]-20), max(0, P2_COLOR[1]-20), max(0, P2_COLOR[2]-20)),
             hover_color=P2_COLOR,
             active_color=(max(0, P2_COLOR[0]-40), max(0, P2_COLOR[1]-40), max(0, P2_COLOR[2]-40)),
-            border_radius=28
         )
 
         self._bg = ModernBackground(W, H)

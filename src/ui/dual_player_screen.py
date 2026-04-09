@@ -4,6 +4,7 @@ from src.core.base_game_manager import BaseGameManager
 from src.core.dual_game_manager import DualGameManager
 from src.core.player import PlayerSlot, PlayerType
 from src.ui.renderer import Renderer
+from src.ui.components import PillButton
 
 
 class DualPlayerScreen:
@@ -119,22 +120,33 @@ class DualPlayerScreen:
         bw_ctr   = int(W * 0.09)   # Center buttons
         pad      = int(W * 0.01)
 
+        def _pb(rect, text, c_top, c_bot, c_shad):
+            return PillButton(rect, text, self.font_btn,
+                              color_top=c_top, color_bot=c_bot, shadow_color=c_shad)
+
         # Nút trung tâm (3 nút)
         total_ctr = bw_ctr * 3 + pad * 2
         start_ctr = cx - total_ctr // 2
-        self.btn_new_game = pygame.Rect(start_ctr, btn_y, bw_ctr, btn_h)
-        self.btn_pause    = pygame.Rect(start_ctr + bw_ctr + pad, btn_y, bw_ctr, btn_h)
-        self.btn_quit     = pygame.Rect(start_ctr + (bw_ctr + pad) * 2, btn_y, bw_ctr, btn_h)
+        self.btn_new_game = _pb((start_ctr, btn_y, bw_ctr, btn_h),
+                                "TRẬN MỚI", (160,230,150), (120,200,110), (90,160,80))
+        self.btn_pause    = _pb((start_ctr + bw_ctr + pad, btn_y, bw_ctr, btn_h),
+                                "TẠM DỮNG", (255,230,150), (230,200,100), (200,170,70))
+        self.btn_quit     = _pb((start_ctr + (bw_ctr + pad) * 2, btn_y, bw_ctr, btn_h),
+                                "THOÁT", (255,160,160), (230,120,120), (200,90,90))
 
         # Nhóm P1: [Undo] [AI] (Căn giữa dưới board P1)
         p1_cx = self._p1_board_x + self._B // 2
-        self.btn_p1_undo = pygame.Rect(p1_cx - pad // 2 - bw_act, btn_y, bw_act, btn_h)
-        self.btn_p1_ai   = pygame.Rect(p1_cx + pad // 2,          btn_y, bw_act, btn_h)
+        self.btn_p1_undo = _pb((p1_cx - pad // 2 - bw_act, btn_y, bw_act, btn_h),
+                               "HOÀN TÁC", (200,210,255), (150,170,255), (120,140,220))
+        self.btn_p1_ai   = _pb((p1_cx + pad // 2, btn_y, bw_act, btn_h),
+                               "AI GIẢI", (190,240,255), (135,215,245), (110,190,220))
 
         # Nhóm P2: [AI] [Undo] (Căn giữa dưới board P2)
         p2_cx = self._p2_board_x + self._B // 2
-        self.btn_p2_ai   = pygame.Rect(p2_cx - pad // 2 - bw_act, btn_y, bw_act, btn_h)
-        self.btn_p2_undo = pygame.Rect(p2_cx + pad // 2,          btn_y, bw_act, btn_h)
+        self.btn_p2_ai   = _pb((p2_cx - pad // 2 - bw_act, btn_y, bw_act, btn_h),
+                               "AI GIẢI", (190,240,255), (135,215,245), (110,190,220))
+        self.btn_p2_undo = _pb((p2_cx + pad // 2, btn_y, bw_act, btn_h),
+                               "HOÀN TÁC", (200,210,255), (150,170,255), (120,140,220))
 
 
     # ------------------------------------------------------------------
@@ -154,16 +166,13 @@ class DualPlayerScreen:
             return "PLAYING_DUAL"
 
         for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                pos = event.pos
-                if self.btn_quit.collidepoint(pos):     return "MENU"
-                if self.btn_new_game.collidepoint(pos): self.gm.new_game()
-                if self.btn_pause.collidepoint(pos):
-                    self.gm.is_paused = not self.gm.is_paused
-                if self.btn_p1_undo.collidepoint(pos) and not self.gm.is_paused:
-                    if self.gm.undo(1) and self.move_sound: self.move_sound.play()
-                if self.btn_p2_undo.collidepoint(pos) and not self.gm.is_paused:
-                    if self.gm.undo(2) and self.move_sound: self.move_sound.play()
+            if self.btn_quit.handle_event(event):     return "MENU"
+            if self.btn_new_game.handle_event(event): self.gm.new_game()
+            if self.btn_pause.handle_event(event):    self.gm.is_paused = not self.gm.is_paused
+            if self.btn_p1_undo.handle_event(event) and not self.gm.is_paused:
+                if self.gm.undo(1) and self.move_sound: self.move_sound.play()
+            if self.btn_p2_undo.handle_event(event) and not self.gm.is_paused:
+                if self.gm.undo(2) and self.move_sound: self.move_sound.play()
 
             if event.type == pygame.KEYDOWN and not self.gm.is_paused:
                 moved = False
@@ -192,21 +201,6 @@ class DualPlayerScreen:
     # ------------------------------------------------------------------
     # Render helpers
     # ------------------------------------------------------------------
-
-    def _draw_pill(self, rect, text, c_top, c_bot, c_shad):
-        shad_rect = pygame.Rect(rect.x, rect.y + 4, rect.width, rect.height)
-        pygame.draw.rect(self.screen, c_shad, shad_rect, border_radius=14)
-        grad = pygame.Surface((1, 2), pygame.SRCALPHA)
-        grad.set_at((0, 0), c_top)
-        grad.set_at((0, 1), c_bot)
-        grad = pygame.transform.smoothscale(grad, (rect.width, rect.height))
-        mask = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(), border_radius=14)
-        grad.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-        self.screen.blit(grad, rect.topleft)
-        pygame.draw.rect(self.screen, (255, 255, 255), rect, border_radius=14, width=2)
-        txt = self.font_btn.render(text, True, (255, 255, 255))
-        self.screen.blit(txt, txt.get_rect(center=rect.center))
 
     def _draw_info_pill(self, rect, label, value, lbl_color, val_color):
         """Vẽ pill thông tin: nhãn nhỏ phía trên + giá trị lớn bên dưới."""
@@ -297,14 +291,15 @@ class DualPlayerScreen:
         self._draw_stat_box(self.p2, self._p2_board_x)
 
         # ---- Nút (vị trí cố định) ----
-        pause_txt = "TIẾP TỤC" if self.gm.is_paused else "TẠM DỪNG"
-        self._draw_pill(self.btn_new_game, "TRẬN MỚI", (160, 230, 150), (120, 200, 110), (90, 160, 80))
-        self._draw_pill(self.btn_pause,    pause_txt,  (255, 230, 150), (230, 200, 100), (200, 170, 70))
-        self._draw_pill(self.btn_quit,     "THOÁT",    (255, 160, 160), (230, 120, 120), (200, 90, 90))
-        self._draw_pill(self.btn_p1_undo,  "HOÀN TÁC", (200, 210, 255), (150, 170, 255), (120, 140, 220))
-        self._draw_pill(self.btn_p1_ai,    "AI GIẢI",  (190, 240, 255), (135, 215, 245), (110, 190, 220))
-        self._draw_pill(self.btn_p2_ai,    "AI GIẢI",  (190, 240, 255), (135, 215, 245), (110, 190, 220))
-        self._draw_pill(self.btn_p2_undo,  "HOÀN TÁC", (200, 210, 255), (150, 170, 255), (120, 140, 220))
+        mouse = pygame.mouse.get_pos()
+        self.btn_pause.text = "TIẾP TỤC" if self.gm.is_paused else "TẠM DỪNG"
+        self.btn_new_game.draw(self.screen, mouse)
+        self.btn_pause.draw(self.screen, mouse)
+        self.btn_quit.draw(self.screen, mouse)
+        self.btn_p1_undo.draw(self.screen, mouse)
+        self.btn_p1_ai.draw(self.screen, mouse)
+        self.btn_p2_ai.draw(self.screen, mouse)
+        self.btn_p2_undo.draw(self.screen, mouse)
 
         # ---- Overlay thắng ----
         if self.is_winning:

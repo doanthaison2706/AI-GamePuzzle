@@ -21,7 +21,7 @@ from configs.game_config import (
     P1_COLOR, P2_COLOR, WIN_COLOR, PANEL_BG,
     BG_COLOR,
 )
-from src.ui.components import Button
+from src.ui.components import RoundedButton
 from src.ui.background import ModernBackground
 from src.utils.image_crop import open_file_dialog
 from src.ui.crop_menu import CropImageMenu
@@ -77,8 +77,8 @@ class SetupSingleScreen:
 
         # Player-column image-pick buttons (two layouts)
         def _mk(rect, text, color, hcolor):
-            return Button(rect, text, self._font_btn,
-                          color=color, hover_color=hcolor, border_radius=19)
+            return RoundedButton(rect, text, self._font_btn,
+                          color=color, hover_color=hcolor)
 
         dim = lambda c: tuple(max(0, v - 20) for v in c)
 
@@ -100,28 +100,26 @@ class SetupSingleScreen:
         p2_prev_cx = 3*W//4
         p2_prev_cy = 90 + _PREVIEW // 2   # centre of preview area
         add_btn_size = 72
-        self._btn_p2_add = Button(
+        self._btn_p2_add = RoundedButton(
             (p2_prev_cx - add_btn_size//2, p2_prev_cy - add_btn_size//2,
              add_btn_size, add_btn_size),
             "+", pygame.font.SysFont("Georgia", 36, bold=True),
             color=(45, 130, 55), hover_color=(65, 160, 75),
-            border_radius=add_btn_size//2,
         )
         # ── Player-2 remove button (small "−") — shown when P2 is ON ────────────
-        self._btn_p2_remove = Button(
+        self._btn_p2_remove = RoundedButton(
             (p2_prev_cx + _PREVIEW//2 - 22, 68, 28, 28),
             "−", pygame.font.SysFont("Georgia", 20, bold=True),
             color=(160, 50, 50), hover_color=(200, 70, 70),
-            border_radius=14,
         )
 
         # ── Board-size buttons (replaces Difficulty) ──────────────────────────
         sy = 420
-        self._size_btns: dict[int, Button] = {}
+        self._size_btns: dict[int, RoundedButton] = {}
         sizes = list(_SIZES.keys())
         for i, n in enumerate(sizes):
             x = cx - (len(sizes) * 115 // 2) + i * 115
-            self._size_btns[n] = Button(
+            self._size_btns[n] = RoundedButton(
                 (x, sy + 28, 100, 38), _SIZES[n], self._font_btn,
                 color=(55, 55, 100), hover_color=(75, 75, 140),
             )
@@ -131,33 +129,33 @@ class SetupSingleScreen:
         # ── Score limit (multi only) ───────────────────────────────────────────
         sly = sy + 110
         self._score_label_y = sly
-        self._score_dec = Button((cx - 74, sly + 22, 40, 40), "−", self._font_val)
-        self._score_inc = Button((cx + 34, sly + 22, 40, 40), "+", self._font_val)
+        self._score_dec = RoundedButton((cx - 74, sly + 22, 40, 40), "−", self._font_val)
+        self._score_inc = RoundedButton((cx + 34, sly + 22, 40, 40), "+", self._font_val)
         self._score_val_y = sly + 42
 
         # ── Timer toggle + duration ───────────────────────────────────────────
         tmy = sly + 90
         self._timer_label_y = tmy
-        self._timer_toggle  = Button((cx - 55, tmy + 22, 110, 36), "", self._font_btn)
+        self._timer_toggle  = RoundedButton((cx - 55, tmy + 22, 110, 36), "", self._font_btn)
         self._timer_enabled = False
         self._timer_secs    = 180
 
         tdy = tmy + 72
         self._tdur_label_y = tdy
-        self._timer_dec = Button((cx - 74, tdy + 22, 40, 40), "−", self._font_val)
-        self._timer_inc = Button((cx + 34, tdy + 22, 40, 40), "+", self._font_val)
+        self._timer_dec = RoundedButton((cx - 74, tdy + 22, 40, 40), "−", self._font_val)
+        self._timer_inc = RoundedButton((cx + 34, tdy + 22, 40, 40), "+", self._font_val)
         self._tdur_val_y = tdy + 42
 
         # ── Footer ────────────────────────────────────────────────────────────
-        self._btn_back = Button(
+        self._btn_back = RoundedButton(
             (20, H - 66, 140, 46), "◀  B A C K", self._font_btn,
             color=(max(0, P2_COLOR[0]-30), max(0, P2_COLOR[1]-30), max(0, P2_COLOR[2]-30)),
-            hover_color=P2_COLOR, border_radius=23,
+            hover_color=P2_COLOR,
         )
         bw_start = 220
-        self._btn_start = Button(
+        self._btn_start = RoundedButton(
             (cx - bw_start//2, H - 66, bw_start, 46), "▶  S T A R T", self._font_btn,
-            color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE, border_radius=23,
+            color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE,
         )
 
     # ─── Public interface ─────────────────────────────────────────────────────

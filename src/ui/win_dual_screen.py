@@ -1,5 +1,6 @@
 import pygame
 from configs import game_config as config
+from src.ui.components import PillButton
 
 
 class WinDualScreen:
@@ -45,40 +46,20 @@ class WinDualScreen:
         start_x = (w - total) // 2
         btn_y = h - 100
 
-        self.rect_replay = pygame.Rect(start_x, btn_y, btn_w, btn_h)
-        self.rect_menu = pygame.Rect(start_x + btn_w + spacing, btn_y, btn_w, btn_h)
-
-        self.colors = {
-            "orange": {"top": (255, 210, 130), "bot": (255, 175, 85), "shad": (220, 140, 60)},
-            "purple": {"top": (220, 180, 255), "bot": (190, 140, 240), "shad": (160, 110, 210)},
-        }
+        self.btn_replay = PillButton(
+            (start_x, btn_y, btn_w, btn_h), "TRẬN MỚI", self.font_btn,
+            color_top=(255, 210, 130), color_bot=(255, 175, 85), shadow_color=(220, 140, 60),
+        )
+        self.btn_menu = PillButton(
+            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "THOÁT", self.font_btn,
+            color_top=(220, 180, 255), color_bot=(190, 140, 240), shadow_color=(160, 110, 210),
+        )
 
     def handle_events(self, events):
         for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.rect_replay.collidepoint(event.pos):
-                    return "PLAYING_DUAL", None
-                elif self.rect_menu.collidepoint(event.pos):
-                    return "MENU", None
+            if self.btn_replay.handle_event(event): return "PLAYING_DUAL", None
+            if self.btn_menu.handle_event(event):   return "MENU", None
         return "WIN_DUAL", None
-
-    def _draw_gradient_btn(self, surface, rect, c_top, c_bot, c_shad):
-        shad = pygame.Rect(rect.x, rect.y + 5, rect.width, rect.height)
-        pygame.draw.rect(surface, c_shad, shad, border_radius=rect.height // 2)
-        grad = pygame.Surface((1, 2), pygame.SRCALPHA)
-        grad.set_at((0, 0), c_top)
-        grad.set_at((0, 1), c_bot)
-        grad = pygame.transform.smoothscale(grad, (rect.width, rect.height))
-        mask = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(), border_radius=rect.height // 2)
-        grad.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-        surface.blit(grad, rect.topleft)
-        pygame.draw.rect(surface, (255, 255, 255), rect, border_radius=rect.height // 2, width=2)
-
-    def _draw_pill_button(self, surface, rect, text, theme):
-        self._draw_gradient_btn(surface, rect, theme["top"], theme["bot"], theme["shad"])
-        txt = self.font_btn.render(text, True, (255, 255, 255))
-        surface.blit(txt, txt.get_rect(center=rect.center))
 
     def _draw_stat_box(self, cx, y, label, value):
         box_w, box_h = 145, 100
@@ -123,5 +104,6 @@ class WinDualScreen:
         self._draw_stat_box(cx + spacing, panel_rect.y + 20, "P2 BƯỚC", self.p2_moves)
 
         # Nút
-        self._draw_pill_button(self.screen, self.rect_replay, "TRẬN MỚI", self.colors["orange"])
-        self._draw_pill_button(self.screen, self.rect_menu, "THOÁT", self.colors["purple"])
+        mouse = pygame.mouse.get_pos()
+        self.btn_replay.draw(self.screen, mouse)
+        self.btn_menu.draw(self.screen, mouse)

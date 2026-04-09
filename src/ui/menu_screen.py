@@ -35,11 +35,17 @@ class MainMenuScreen:
         cx     = W // 2
 
         self.btn_play = RoundedButton(
-            (cx - bw // 2, 460, bw, bh), "P L A Y", self._font_btn,
+            (cx - bw // 2, 430, bw, bh), "P L A Y", self._font_btn,
             color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE,
         )
+        self.btn_options = RoundedButton(
+            (cx - bw // 2, 510, bw, bh), "O P T I O N S", self._font_btn,
+            color=(max(0, P1_COLOR[0]-20), max(0, P1_COLOR[1]-20), max(0, P1_COLOR[2]-20)),
+            hover_color=P1_COLOR,
+            active_color=(max(0, P1_COLOR[0]-40), max(0, P1_COLOR[1]-40), max(0, P1_COLOR[2]-40)),
+        )
         self.btn_exit = RoundedButton(
-            (cx - bw // 2, 540, bw, bh), "T H O Á T", self._font_btn,
+            (cx - bw // 2, 590, bw, bh), "T H O Á T", self._font_btn,
             color=(max(0, P2_COLOR[0]-20), max(0, P2_COLOR[1]-20), max(0, P2_COLOR[2]-20)),
             hover_color=P2_COLOR,
             active_color=(max(0, P2_COLOR[0]-40), max(0, P2_COLOR[1]-40), max(0, P2_COLOR[2]-40)),
@@ -53,6 +59,8 @@ class MainMenuScreen:
         for event in events:
             if self.btn_play.handle_event(event):
                 return "SETUP", None
+            if self.btn_options.handle_event(event):
+                return "OPTIONS", None
             if self.btn_exit.handle_event(event):
                 pygame.quit()
                 sys.exit()
@@ -74,6 +82,7 @@ class MainMenuScreen:
         self.screen.blit(divider, divider.get_rect(center=(W // 2, 370)))
 
         self.btn_play.draw(self.screen, mouse)
+        self.btn_options.draw(self.screen, mouse)
         self.btn_exit.draw(self.screen, mouse)
 
     # ─── Private ──────────────────────────────────────────────────────────────

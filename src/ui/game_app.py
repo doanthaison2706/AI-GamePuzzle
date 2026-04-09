@@ -7,14 +7,15 @@ from src.ui.single_player_screen import SinglePlayerScreen
 from src.ui.dual_player_screen import DualPlayerScreen
 from src.ui.win_single_screen import WinSingleScreen
 from src.ui.win_dual_screen import WinDualScreen
+from src.core.settings_manager import SettingsManager
+from src.ui.options_screen import OptionsScreen
 
 
 class GameApp:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode(
-            (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), pygame.RESIZABLE
-        )
+        self.settings_mgr = SettingsManager()
+        self.screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
         pygame.display.set_caption("N-Puzzle Arena")
         self.clock = pygame.time.Clock()
 
@@ -25,16 +26,17 @@ class GameApp:
     # ── helpers ───────────────────────────────────────────────────────────────
 
     def _go_menu(self):
-        """Return to main menu, resetting window size."""
-        pygame.display.set_mode(
-            (config.WINDOW_WIDTH, config.WINDOW_HEIGHT), pygame.RESIZABLE
-        )
+        """Return to main menu."""
         self.state = "MAIN_MENU"
         self.current_screen = MainMenuScreen(self.screen)
 
     def _go_setup(self, start_as_multi: bool = False):
         self.state = "SETUP"
         self.current_screen = SetupSingleScreen(self.screen, start_as_multi)
+
+    def _go_options(self):
+        self.state = "OPTIONS"
+        self.current_screen = OptionsScreen(self.screen)
 
     def _go_play(self, setup_data: dict):
         """Launch the correct game screen based on data['multiplayer']."""
@@ -71,6 +73,8 @@ class GameApp:
                 next_state, _ = self.current_screen.handle_events(events)
                 if next_state == "SETUP":
                     self._go_setup()
+                elif next_state == "OPTIONS":
+                    self._go_options()
 
             # ── SETUP (unified 1P + 2P) ──────────────────────────────────────
             elif self.state == "SETUP":
@@ -78,6 +82,12 @@ class GameApp:
                 if next_state == "PLAYING":
                     self._go_play(setup_data)
                 elif next_state == "MENU":
+                    self._go_menu()
+
+            # ── OPTIONS ──────────────────────────────────────────────────────
+            elif self.state == "OPTIONS":
+                next_state, _ = self.current_screen.handle_events(events)
+                if next_state == "MENU":
                     self._go_menu()
 
             # ── PLAYING (single or dual — determined by setup_data) ───────────

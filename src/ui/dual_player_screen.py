@@ -27,9 +27,7 @@ class DualPlayerScreen:
         self.screen = screen
         self.size = setup_data.get("size", 3)
 
-        # Cố định kích thước cửa sổ - không dùng RESIZABLE
-        # → boards/buttons giữ nguyên vị trí dù người dùng kéo cửa sổ
-        pygame.display.set_mode((config.DUAL_WINDOW_WIDTH, config.WINDOW_HEIGHT))
+        # Removed hardcoded set_mode, now relying on game_app's SettingsManager display
         pygame.display.set_caption("N-Puzzle Arena — Đối Kháng")
 
         # --- GAME MANAGER ---

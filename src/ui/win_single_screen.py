@@ -1,5 +1,6 @@
 import pygame
 from configs import game_config as config
+from src.ui.components import PillButton
 
 class WinSingleScreen:
     def __init__(self, screen, result_data):
@@ -43,57 +44,25 @@ class WinSingleScreen:
         start_x = (config.WINDOW_WIDTH - total_w) // 2
         btn_y = config.WINDOW_HEIGHT - 100
 
-        self.rect_replay = pygame.Rect(start_x, btn_y, btn_w, btn_h)
-        self.rect_setup = pygame.Rect(start_x + btn_w + spacing, btn_y, btn_w, btn_h)
-        self.rect_menu = pygame.Rect(start_x + (btn_w + spacing) * 2, btn_y, btn_w, btn_h)
-
-        # Bảng màu Gradient kẹo ngọt cho 3 nút
-        self.colors = {
-            "orange": {"top": (255, 210, 130), "bot": (255, 175, 85), "shad": (220, 140, 60)},
-            "blue":   {"top": (150, 220, 255), "bot": (100, 190, 240), "shad": (80, 160, 210)},
-            "purple": {"top": (220, 180, 255), "bot": (190, 140, 240), "shad": (160, 110, 210)}
-        }
+        self.btn_replay = PillButton(
+            (start_x, btn_y, btn_w, btn_h), "TRẬN MỚI", self.font_btn,
+            color_top=(255, 210, 130), color_bot=(255, 175, 85), shadow_color=(220, 140, 60),
+        )
+        self.btn_setup = PillButton(
+            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "CHỌ N MÀN", self.font_btn,
+            color_top=(150, 220, 255), color_bot=(100, 190, 240), shadow_color=(80, 160, 210),
+        )
+        self.btn_menu = PillButton(
+            (start_x + (btn_w + spacing) * 2, btn_y, btn_w, btn_h), "THOÁT", self.font_btn,
+            color_top=(220, 180, 255), color_bot=(190, 140, 240), shadow_color=(160, 110, 210),
+        )
 
     def handle_events(self, events):
         for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = event.pos
-                if self.rect_replay.collidepoint(mouse_pos):
-                    return "PLAYING", None # Trả về lệnh chơi lại ván y hệt
-                elif self.rect_setup.collidepoint(mouse_pos):
-                    return "SETUP_SINGLE", None # Quay về màn hình cấu hình trận mới
-                elif self.rect_menu.collidepoint(mouse_pos):
-                    return "MENU", None # Quay về màn hình chính
+            if self.btn_replay.handle_event(event): return "PLAYING", None
+            if self.btn_setup.handle_event(event):  return "SETUP_SINGLE", None
+            if self.btn_menu.handle_event(event):   return "MENU", None
         return "WIN_SINGLE", None
-
-    def draw_gradient_rect(self, surface, rect, color_top, color_bottom, radius, shadow_color=None):
-        """Hàm vẽ nút xịn xò với bóng đổ"""
-        if shadow_color:
-            shadow_rect = pygame.Rect(rect.x, rect.y + 6, rect.width, rect.height)
-            pygame.draw.rect(surface, shadow_color, shadow_rect, border_radius=radius)
-
-        grad_surf = pygame.Surface((1, 2), pygame.SRCALPHA)
-        grad_surf.set_at((0, 0), color_top)
-        grad_surf.set_at((0, 1), color_bottom)
-        grad_surf = pygame.transform.smoothscale(grad_surf, (rect.width, rect.height))
-
-        mask = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(), border_radius=radius)
-        grad_surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-        surface.blit(grad_surf, rect.topleft)
-
-    def draw_pill_button(self, surface, rect, text, color_theme):
-        self.draw_gradient_rect(surface, rect, color_theme["top"], color_theme["bot"], rect.height//2, color_theme["shad"])
-        # Viền trắng nổi bật
-        pygame.draw.rect(surface, (255, 255, 255), rect, border_radius=rect.height//2, width=2)
-
-        # Chữ có bóng mờ
-        txt_shad = self.font_btn.render(text, True, color_theme["shad"])
-        txt_surf = self.font_btn.render(text, True, (255, 255, 255))
-        txt_rect = txt_surf.get_rect(center=rect.center)
-
-        surface.blit(txt_shad, (txt_rect.x, txt_rect.y + 1))
-        surface.blit(txt_surf, txt_rect)
 
     def draw_stat_box(self, center_x, y, label, value):
         """Vẽ từng ô vuông bo tròn chứa thông số bên trong Panel"""
@@ -146,6 +115,7 @@ class WinSingleScreen:
         self.draw_stat_box(center_x + box_spacing, panel_rect.y + 20, "CẤP ĐỘ", f"{self.size}x{self.size}")
 
         # 3. 3 NÚT BẤM DƯỚI ĐÁY
-        self.draw_pill_button(self.screen, self.rect_replay, "TRẬN MỚI", self.colors["orange"])
-        self.draw_pill_button(self.screen, self.rect_setup, "CHỌN MÀN", self.colors["blue"])
-        self.draw_pill_button(self.screen, self.rect_menu, "THOÁT", self.colors["purple"])
+        mouse = pygame.mouse.get_pos()
+        self.btn_replay.draw(self.screen, mouse)
+        self.btn_setup.draw(self.screen, mouse)
+        self.btn_menu.draw(self.screen, mouse)

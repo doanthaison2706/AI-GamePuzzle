@@ -26,9 +26,23 @@ MARGIN_LEFT = (WINDOW_WIDTH - BOARD_SIZE) // 2
 
 # Bảng màu
 FPS = 60
-BG_COLOR = (245, 245, 245)
-TEXT_COLOR = (50, 50, 50)
-WHITE = (255, 255, 255)
+BG_COLOR        = (245, 242, 235)   # cream-white background
+TEXT_COLOR      = (40,  40,  55)    # near-black text
+MUTED_TEXT      = (140, 135, 125)   # secondary / label text
+WHITE           = (255, 255, 255)
+
+# Accent & button palette
+ACCENT          = (100, 180, 240)   # sky-blue accent
+BTN_COLOR       = ( 70,  80, 150)   # default button
+BTN_HOVER       = ( 90, 105, 190)   # hovered button
+BTN_ACTIVE      = ( 50,  60, 120)   # pressed button
+BTN_TEXT        = (255, 255, 255)   # button label
+
+# Player accent colours
+P1_COLOR        = ( 80, 160, 220)   # player 1 blue
+P2_COLOR        = (220,  90,  90)   # player 2 red
+WIN_COLOR       = ( 60, 200, 120)   # win / success green
+PANEL_BG        = (220, 215, 205)   # panel background
 
 # --- DUAL PLAYER LAYOUT ---
 # Cửa sổ chơi đôi rộng gấp đôi cửa sổ chơi đơn

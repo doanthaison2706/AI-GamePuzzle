@@ -4,6 +4,7 @@ from configs import game_config as config
 from src.core.single_game_manager import SingleGameManager
 from src.ui.renderer import Renderer
 from src.utils.image_crop import slice_image
+from src.ui.components import PillButton
 
 class SinglePlayerScreen:
     def __init__(self, screen, setup_data):
@@ -64,33 +65,25 @@ class SinglePlayerScreen:
             self.font_stat = pygame.font.SysFont("arial", 20, bold=True)
             self.font_btn = pygame.font.SysFont("arial", 14, bold=True)
 
-        # --- 3. KHỞI TẠO 6 NÚT BẤM (Theo màu ảnh gốc) ---
+        # --- 3. KHỞI TẠO 6 NÚT BẤM ---
         btn_w, btn_h = 90, 85
         spacing = 15
-        total_w = (btn_w * 6) + (spacing * 5)
+        total_w = btn_w * 6 + spacing * 5
         start_x = (config.WINDOW_WIDTH - total_w) // 2
-        btn_y = config.WINDOW_HEIGHT - 110 # Cách đáy 110px
+        btn_y = config.WINDOW_HEIGHT - 110
 
-        # Cấu trúc: [Tên biến Rect, Text, Màu Top, Màu Bot, Màu Shadow]
-        self.buttons = [
-            {"rect": pygame.Rect(start_x, btn_y, btn_w, btn_h), "text": "GỢI Ý",
-             "c_top": (255, 230, 190), "c_bot": (255, 204, 150), "c_shad": (230, 180, 120)},
+        def _pb(i, text, c_top, c_bot, c_shad):
+            x = start_x + (btn_w + spacing) * i
+            return PillButton((x, btn_y, btn_w, btn_h), text, self.font_btn,
+                              color_top=c_top, color_bot=c_bot, shadow_color=c_shad)
 
-            {"rect": pygame.Rect(start_x + (btn_w+spacing)*1, btn_y, btn_w, btn_h), "text": "AI GIẢI",
-             "c_top": (190, 240, 255), "c_bot": (135, 215, 245), "c_shad": (110, 190, 220)},
+        self.btn_hint   = _pb(0, "GỢI Ý",   (255,230,190), (255,204,150), (230,180,120))
+        self.btn_ai     = _pb(1, "AI GIẢI",  (190,240,255), (135,215,245), (110,190,220))
+        self.btn_undo   = _pb(2, "HOÀN TÁC", (210,250,200), (160,230,150), (130,200,120))
+        self.btn_replay = _pb(3, "CHƠI LẠI", (255,200,230), (255,150,200), (220,120,170))
+        self.btn_pause  = _pb(4, "TẠM DỪNG", (200,210,255), (150,170,255), (120,140,220))
+        self.btn_quit   = _pb(5, "THOÁT",    (255,190,190), (255,140,140), (220,110,110))
 
-            {"rect": pygame.Rect(start_x + (btn_w+spacing)*2, btn_y, btn_w, btn_h), "text": "HOÀN TÁC",
-             "c_top": (210, 250, 200), "c_bot": (160, 230, 150), "c_shad": (130, 200, 120)},
-
-            {"rect": pygame.Rect(start_x + (btn_w+spacing)*3, btn_y, btn_w, btn_h), "text": "CHƠI LẠI",
-             "c_top": (255, 200, 230), "c_bot": (255, 150, 200), "c_shad": (220, 120, 170)},
-
-            {"rect": pygame.Rect(start_x + (btn_w+spacing)*4, btn_y, btn_w, btn_h), "text": "TẠM DỪNG",
-             "c_top": (200, 210, 255), "c_bot": (150, 170, 255), "c_shad": (120, 140, 220)},
-
-            {"rect": pygame.Rect(start_x + (btn_w+spacing)*5, btn_y, btn_w, btn_h), "text": "THOÁT",
-             "c_top": (255, 190, 190), "c_bot": (255, 140, 140), "c_shad": (220, 110, 110)}
-        ]
 
     def handle_events(self, events):
         # --- 1. KIỂM TRA DELAY KHI THẮNG GAME (Chạy mỗi frame) ---
@@ -114,16 +107,14 @@ class SinglePlayerScreen:
             elif event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
                 self.show_full_image = False
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = event.pos
-                if self.buttons[0]["rect"].collidepoint(mouse_pos): pass # Gợi ý
-                if self.buttons[1]["rect"].collidepoint(mouse_pos): pass # AI Giải
-                if self.buttons[2]["rect"].collidepoint(mouse_pos):
-                    if self.gm.undo():
-                        if self.move_sound: self.move_sound.play()
-                if self.buttons[3]["rect"].collidepoint(mouse_pos): self.gm.new_game() # Chơi lại
-                if self.buttons[4]["rect"].collidepoint(mouse_pos): self.is_paused = not self.is_paused # Tạm dừng
-                if self.buttons[5]["rect"].collidepoint(mouse_pos): return "MENU" # Thoát
+            # Button clicks (handle_event fires on MOUSEUP)
+            if self.btn_hint.handle_event(event):   pass  # Gợi ý
+            if self.btn_ai.handle_event(event):     pass  # AI Giải
+            if self.btn_undo.handle_event(event):
+                if self.gm.undo() and self.move_sound: self.move_sound.play()
+            if self.btn_replay.handle_event(event): self.gm.new_game()
+            if self.btn_pause.handle_event(event):  self.is_paused = not self.is_paused
+            if self.btn_quit.handle_event(event):   return "MENU"
 
             # ---- [CHEAT KEY] Bấm phím 'W' để kích hoạt THẮNG ----
             if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
@@ -169,7 +160,7 @@ class SinglePlayerScreen:
             self.gm.update_time(dt)
 
     def draw_gradient_rect(self, surface, rect, color_top, color_bottom, radius, shadow_color=None, shadow_offset=6, border_color=None):
-        """Hàm vẽ nút xịn xò"""
+        """Kept for draw_top_stat_pill which uses a different visual style."""
         if shadow_color:
             shadow_rect = pygame.Rect(rect.x, rect.y + shadow_offset, rect.width, rect.height)
             pygame.draw.rect(surface, shadow_color, shadow_rect, border_radius=radius)
@@ -250,18 +241,10 @@ class SinglePlayerScreen:
             self.screen.blit(pause_txt, pause_txt.get_rect(center=(screen_w//2, screen_h//2)))
 
         # 5. VẼ 6 NÚT CÔNG CỤ Ở DƯỚI ĐÁY
-        for btn in self.buttons:
-            # Vẽ hình dạng nút
-            self.draw_gradient_rect(self.screen, btn["rect"], btn["c_top"], btn["c_bot"], 20,
-                                    shadow_color=btn["c_shad"], shadow_offset=5, border_color=(255, 255, 255))
-
-            # Vẽ Text ở mép dưới của nút
-            txt_surf = self.font_btn.render(btn["text"], True, (255, 255, 255))
-            txt_rect = txt_surf.get_rect(centerx=btn["rect"].centerx, bottom=btn["rect"].bottom - 10)
-
-            # Đổ bóng chữ để dễ đọc
-            txt_shadow = self.font_btn.render(btn["text"], True, btn["c_shad"])
-            self.screen.blit(txt_shadow, (txt_rect.x, txt_rect.y + 1))
-            self.screen.blit(txt_surf, txt_rect)
-
-            # (Tương lai) Dành chỗ trống ở nửa trên của nút để vẽ Icon
+        mouse = pygame.mouse.get_pos()
+        self.btn_hint.draw(self.screen, mouse)
+        self.btn_ai.draw(self.screen, mouse)
+        self.btn_undo.draw(self.screen, mouse)
+        self.btn_replay.draw(self.screen, mouse)
+        self.btn_pause.draw(self.screen, mouse)
+        self.btn_quit.draw(self.screen, mouse)

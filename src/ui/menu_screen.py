@@ -1,103 +1,111 @@
-import pygame
+"""
+menu_screen.py
+--------------
+Main menu screen — redesigned with a bright, minimalist, creative aesthetic.
+Replaces the old image-based menu with the animated ModernBackground + Button system.
+"""
+
+import math
 import sys
-from configs import game_config as config
-from src.ui.components import Button
+import pygame
+
+from configs.game_config import (
+    TEXT_COLOR, MUTED_TEXT, ACCENT,
+    BTN_COLOR, BTN_HOVER, BTN_ACTIVE,
+    P1_COLOR, P2_COLOR,
+)
+from src.ui.components import RoundedButton
+from src.ui.background import ModernBackground
+
+TITLE = "P U Z Z L E"
+
 
 class MainMenuScreen:
-    def __init__(self, screen):
+    def __init__(self, screen: pygame.Surface):
         self.screen = screen
+        W, H = screen.get_size()
 
-        # 1. TẢI TÀI NGUYÊN (Chỉ tải ảnh gốc, chưa scale vội)
-        try:
-            self.original_bg = pygame.image.load("Assets/images/background.png").convert()
-            self.cached_bg = None
-            self.last_size = (0, 0) # Dùng để check xem cửa sổ có bị kéo to ra không
+        self._font_title = pygame.font.SysFont("Georgia", 96, bold=True)
+        self._font_sub   = pygame.font.SysFont("Georgia",  22, italic=True)
+        self._font_btn   = pygame.font.SysFont("Georgia",  18, bold=True)
 
-            self.logo_image = pygame.image.load("Assets/images/logo.png").convert_alpha()
-        except Exception as e:
-            print("⚠️ Lỗi tải ảnh:", e)
-            self.original_bg = None
-            self.logo_image = None
+        self._tick = 0
 
-        # 2. KHỞI TẠO NÚT (Tọa độ tạm thời, lát render sẽ tính lại chuẩn)
-        btn_w, btn_h = 320, 65
-        color_pink = (247, 168, 196)
-        color_mint = (159, 227, 214)
-        color_blue = (169, 214, 245)
-        color_lavender = (203, 183, 246)
-        text_color = (255, 255, 255)
+        bw, bh = 260, 56
+        cx     = W // 2
 
-        self.btn_single = Button(0, 0, btn_w, btn_h, "CHƠI ĐƠN", color_pink, (255, 180, 210), text_color)
-        self.btn_multi = Button(0, 0, btn_w, btn_h, "ĐỐI KHÁNG", color_mint, (170, 240, 225), text_color)
-        self.btn_setting = Button(0, 0, btn_w, btn_h, "TÙY CHỈNH", color_blue, (180, 225, 255), text_color)
-        self.btn_exit = Button(0, 0, btn_w, btn_h, "THOÁT", color_lavender, (220, 200, 255), text_color)
+        self.btn_play = RoundedButton(
+            (cx - bw // 2, 460, bw, bh), "P L A Y", self._font_btn,
+            color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE,
+        )
+        self.btn_exit = RoundedButton(
+            (cx - bw // 2, 540, bw, bh), "T H O Á T", self._font_btn,
+            color=(max(0, P2_COLOR[0]-20), max(0, P2_COLOR[1]-20), max(0, P2_COLOR[2]-20)),
+            hover_color=P2_COLOR,
+            active_color=(max(0, P2_COLOR[0]-40), max(0, P2_COLOR[1]-40), max(0, P2_COLOR[2]-40)),
+        )
+
+        self._bg = ModernBackground(W, H)
+
+    # ─── Public interface ─────────────────────────────────────────────────────
 
     def handle_events(self, events):
         for event in events:
-            if self.btn_single.handle_event(event):
-                return "SETUP_SINGLE", None
-            if self.btn_multi.handle_event(event):
-                return "SETUP_MULTI", None
-            if self.btn_setting.handle_event(event):
-                pass
+            if self.btn_play.handle_event(event):
+                return "SETUP", None
             if self.btn_exit.handle_event(event):
                 pygame.quit()
                 sys.exit()
-
         return "MAIN_MENU", None
 
-    def render(self):
-        # Lấy kích thước THỰC TẾ của cửa sổ ngay lúc này
-        current_w, current_h = self.screen.get_size()
-        center_x = current_w // 2
+    def render(self) -> None:
+        self._tick += 1
+        W, H  = self.screen.get_size()
+        mouse = pygame.mouse.get_pos()
 
-        # ==========================================
-        # 1. VẼ NỀN (Tự động lấp đầy khoảng trắng)
-        # ==========================================
-        if self.original_bg:
-            # Thuật toán Cache: Chỉ scale lại ảnh nếu kích thước cửa sổ bị thay đổi (để chống lag)
-            if self.last_size != (current_w, current_h):
-                self.cached_bg = pygame.transform.smoothscale(self.original_bg, (current_w, current_h))
-                self.last_size = (current_w, current_h)
+        self._bg.draw(self.screen)
+        self._draw_title(W)
 
-            self.screen.blit(self.cached_bg, (0, 0))
-        else:
-            self.screen.fill((245, 245, 245))
+        sub = self._font_sub.render("Slide into creativity", True, TEXT_COLOR)
+        self.screen.blit(sub, sub.get_rect(center=(W // 2, 340)))
 
-        # ==========================================
-        # 2. VẼ LOGO (Tự động căn giữa trên cùng)
-        # ==========================================
-        if self.logo_image:
-            # Tự co giãn logo chiếm 70% chiều rộng màn hình
-            logo_w = int(current_w * 0.7)
-            logo_ratio = self.logo_image.get_height() / self.logo_image.get_width()
-            scaled_logo = pygame.transform.smoothscale(self.logo_image, (logo_w, int(logo_w * logo_ratio)))
+        divider = pygame.Surface((300, 2), pygame.SRCALPHA)
+        divider.fill((*MUTED_TEXT, 100))
+        self.screen.blit(divider, divider.get_rect(center=(W // 2, 370)))
 
-            logo_rect = scaled_logo.get_rect(center=(center_x, int(current_h * 0.25)))
-            self.screen.blit(scaled_logo, logo_rect)
+        self.btn_play.draw(self.screen, mouse)
+        self.btn_exit.draw(self.screen, mouse)
 
-        # ==========================================
-        # 3. VẼ NÚT (Tự động nhảy ra giữa màn hình)
-        # ==========================================
-        # Tính toán tọa độ Y linh hoạt theo chiều cao màn hình
-        start_y = int(current_h * 0.48)
-        gap = int(current_h * 0.11)
+    # ─── Private ──────────────────────────────────────────────────────────────
 
-        # Ép các nút nhảy ra giữa
-        self.btn_single.rect.x = center_x - self.btn_single.rect.w // 2
-        self.btn_single.rect.y = start_y
+    def _draw_title(self, W: int) -> None:
+        t = self._tick
+        cy = 220
 
-        self.btn_multi.rect.x = center_x - self.btn_multi.rect.w // 2
-        self.btn_multi.rect.y = start_y + gap
+        words = list(TITLE.replace(" ", ""))
+        num_chars = len(words)
 
-        self.btn_setting.rect.x = center_x - self.btn_setting.rect.w // 2
-        self.btn_setting.rect.y = start_y + gap * 2
+        char_surfs  = [self._font_title.render(ch, True, TEXT_COLOR) for ch in words]
+        char_widths = [s.get_width() for s in char_surfs]
+        total_width = sum(char_widths) + (num_chars - 1) * 20
 
-        self.btn_exit.rect.x = center_x - self.btn_exit.rect.w // 2
-        self.btn_exit.rect.y = start_y + gap * 3
+        start_x   = W // 2 - total_width // 2
+        current_x = start_x
 
-        # Vẽ ra
-        self.btn_single.draw(self.screen)
-        self.btn_multi.draw(self.screen)
-        self.btn_setting.draw(self.screen)
-        self.btn_exit.draw(self.screen)
+        shadow_col = tuple(min(255, c + 50) for c in MUTED_TEXT)
+
+        for i, (surf, ch_w) in enumerate(zip(char_surfs, char_widths)):
+            offset_y = 15 * math.sin(t * 0.05 + i * 0.5)
+
+            color_blend = abs(math.sin(t * 0.02 + i * 0.3))
+            c_r = int(TEXT_COLOR[0] * (1 - color_blend) + ACCENT[0] * color_blend * 0.8)
+            c_g = int(TEXT_COLOR[1] * (1 - color_blend) + ACCENT[1] * color_blend * 0.8)
+            c_b = int(TEXT_COLOR[2] * (1 - color_blend) + ACCENT[2] * color_blend * 0.8)
+
+            colored_surf = self._font_title.render(words[i], True, (c_r, c_g, c_b))
+
+            shadow = self._font_title.render(words[i], True, shadow_col)
+            self.screen.blit(shadow, (current_x + 3, cy + offset_y + 3))
+            self.screen.blit(colored_surf, (current_x, cy + offset_y))
+
+            current_x += ch_w + 20

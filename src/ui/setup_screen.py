@@ -1,477 +1,420 @@
+"""
+setup_screen.py
+---------------
+Unified game-setup screen (replaces SetupSingleScreen + SetupMultiScreen).
+
+Returns from handle_events:
+  ("SETUP_SINGLE", None)   — still on this screen, single-player mode
+  ("SETUP_MULTI",  None)   — still on this screen, multi-player mode
+  ("PLAYING",      data)   — start single-player  (data has size / time / image)
+  ("PLAYING",      data)   — re-used for dual via game_app routing (see below)
+  ("MENU",         None)   — back to main menu
+
+game_app distinguishes 1P vs 2P via data["multiplayer"].
+"""
+
 import pygame
-import os
-from configs import game_config as config
+
+from configs.game_config import (
+    TEXT_COLOR, MUTED_TEXT, ACCENT,
+    BTN_COLOR, BTN_HOVER, BTN_ACTIVE,
+    P1_COLOR, P2_COLOR, WIN_COLOR, PANEL_BG,
+    BG_COLOR,
+)
+from src.ui.components import RoundedButton
+from src.ui.background import ModernBackground
 from src.utils.image_crop import open_file_dialog
 from src.ui.crop_menu import CropImageMenu
+from configs import game_config as config
+
+_PREVIEW = 180   # preview thumbnail size (px)
+
+# Board size options  (n → label)
+_SIZES = {3: "3x3", 4: "4x4", 5: "5x5", 6: "6x6"}
+
 
 class SetupSingleScreen:
-    def __init__(self, screen):
+    """
+    Single unified setup screen.
+    `is_multi` is an internal toggle; game_app still instantiates this
+    class for both SETUP_SINGLE and SETUP_MULTI routes.
+    """
+
+    def __init__(self, screen: pygame.Surface, start_as_multi: bool = False):
         self.screen = screen
-        self.selected_size = 4
-        self.selected_time = 0
-        self.image_mode = "DEFAULT"
-        self.full_image = None
+        W, H = screen.get_size()
+        cx   = W // 2
 
-        # --- BẢNG MÀU GRADIENT & SHADOW ---
-        # Panel
-        self.color_panel_top = (255, 252, 246)
-        self.color_panel_bot = (255, 240, 225)
-        self.color_panel_border = (248, 186, 186)
+        # ── Fonts ─────────────────────────────────────────────────────────────
+        self._font_h1   = pygame.font.SysFont("Georgia", 30, bold=True)
+        self._font_h2   = pygame.font.SysFont("Georgia", 18)
+        self._font_btn  = pygame.font.SysFont("Georgia", 17, bold=True)
+        self._font_val  = pygame.font.SysFont("Georgia", 24, bold=True)
+        self._font_tiny = pygame.font.SysFont("Georgia", 14)
 
-        # Chữ
-        self.color_text_title = (205, 92, 92)
-        self.color_text_inactive = (196, 120, 120)
-        self.color_text_active = (255, 255, 255)
+        # ── State ─────────────────────────────────────────────────────────────
+        self.is_multi       = start_as_multi
+        self.selected_size  = 4        # default board size
+        self.selected_time  = 0        # 0 = unlimited
+        self.selected_score = 3        # best-of (only used in multi)
 
-        # Nút Inactive (Chưa chọn) - Vàng kem
-        self.color_btn_in_top = (255, 248, 238)
-        self.color_btn_in_bot = (248, 233, 213)
-        self.color_btn_in_shadow = (235, 215, 190)
+        # image state: each player defaults to "DEFAULT" (ready immediately)
+        self._image_mode = {1: "DEFAULT", 2: "DEFAULT"}
+        self._full_image = {1: None,      2: None}
+        self._preview    = {1: None,      2: None}
+        self._error      = {1: "",        2: ""}
 
-        # Nút Active (Đã chọn) - Xanh mint
-        self.color_btn_ac_top = (165, 240, 210)
-        self.color_btn_ac_bot = (132, 220, 187)
-        self.color_btn_ac_shadow = (110, 200, 165)
+        # ── Background ────────────────────────────────────────────────────────
+        self._bg = ModernBackground(W, H)
 
-        # Nút Bắt đầu - Hồng kẹo ngọt
-        self.color_btn_st_top = (255, 175, 198)
-        self.color_btn_st_bot = (246, 143, 168)
-        self.color_btn_st_shadow = (220, 120, 145)
+        # ── Layout constants ──────────────────────────────────────────────────
+        col_btn_y  = 300
+        col_btn_h  = 38
 
-        # --- LOAD ASSETS & FONTS ---
-        try:
-            self.bg_img = pygame.image.load("assets/images/bg_setup_new.png").convert()
-            self.bg_img = pygame.transform.scale(self.bg_img, self.screen.get_size())
-        except:
-            self.bg_img = None
+        p1x_multi  = W // 4  - _PREVIEW // 2
+        p2x_multi  = 3*W//4  - _PREVIEW // 2
+        p1x_single = cx      - _PREVIEW // 2
 
-        try:
-            self.font_label = pygame.font.Font("assets/fonts/Baloo-Regular.ttf", 22)
-            self.font_btn = pygame.font.Font("assets/fonts/Quicksand-Bold.ttf", 20)
-            self.font_start = pygame.font.Font("assets/fonts/Baloo-Regular.ttf", 35)
-        except:
-            self.font_label = pygame.font.SysFont("arial", 22, bold=True)
-            self.font_btn = pygame.font.SysFont("arial", 18, bold=True)
-            self.font_start = pygame.font.SysFont("arial", 30, bold=True)
+        # Player-column image-pick buttons (two layouts)
+        def _mk(rect, text, color, hcolor):
+            return RoundedButton(rect, text, self._font_btn,
+                          color=color, hover_color=hcolor)
 
-        self.rects_size = {3: None, 4: None, 5: None, 6: None}
-        self.rects_time = {0: None, 120: None, 300: None, 600: None}
-        self.rects_img = {"DEFAULT": None, "CUSTOM": None}
-        self.rect_start = None
-        self.rect_back = None
+        dim = lambda c: tuple(max(0, v - 20) for v in c)
+
+        self._btn_p1_pick_multi    = _mk((p1x_multi,  col_btn_y,               _PREVIEW, col_btn_h), "Pick Image",   dim(P1_COLOR), P1_COLOR)
+        self._btn_p1_default_multi = _mk((p1x_multi,  col_btn_y+col_btn_h+6,   _PREVIEW, col_btn_h), "Use Defaults", BTN_COLOR,     BTN_HOVER)
+        self._btn_p2_pick          = _mk((p2x_multi,  col_btn_y,               _PREVIEW, col_btn_h), "Pick Image",   dim(P2_COLOR), P2_COLOR)
+        self._btn_p2_default       = _mk((p2x_multi,  col_btn_y+col_btn_h+6,   _PREVIEW, col_btn_h), "Use Defaults", BTN_COLOR,     BTN_HOVER)
+        self._btn_p1_pick_single   = _mk((p1x_single, col_btn_y,               _PREVIEW, col_btn_h), "Pick Image",   dim(P1_COLOR), P1_COLOR)
+        self._btn_p1_default_single= _mk((p1x_single, col_btn_y+col_btn_h+6,   _PREVIEW, col_btn_h), "Use Defaults", BTN_COLOR,     BTN_HOVER)
+
+        # Preview rects
+        self._prev_rect_multi  = {
+            1: pygame.Rect(p1x_multi,  90, _PREVIEW, _PREVIEW),
+            2: pygame.Rect(p2x_multi,  90, _PREVIEW, _PREVIEW),
+        }
+        self._prev_rect_single = {1: pygame.Rect(p1x_single, 90, _PREVIEW, _PREVIEW)}
+
+        # ── Player-2 add button (big "+") — shown when P2 is OFF ──────────────
+        p2_prev_cx = 3*W//4
+        p2_prev_cy = 90 + _PREVIEW // 2   # centre of preview area
+        add_btn_size = 72
+        self._btn_p2_add = RoundedButton(
+            (p2_prev_cx - add_btn_size//2, p2_prev_cy - add_btn_size//2,
+             add_btn_size, add_btn_size),
+            "+", pygame.font.SysFont("Georgia", 36, bold=True),
+            color=(45, 130, 55), hover_color=(65, 160, 75),
+        )
+        # ── Player-2 remove button (small "−") — shown when P2 is ON ────────────
+        self._btn_p2_remove = RoundedButton(
+            (p2_prev_cx + _PREVIEW//2 - 22, 68, 28, 28),
+            "−", pygame.font.SysFont("Georgia", 20, bold=True),
+            color=(160, 50, 50), hover_color=(200, 70, 70),
+        )
+
+        # ── Board-size buttons (replaces Difficulty) ──────────────────────────
+        sy = 420
+        self._size_btns: dict[int, RoundedButton] = {}
+        sizes = list(_SIZES.keys())
+        for i, n in enumerate(sizes):
+            x = cx - (len(sizes) * 115 // 2) + i * 115
+            self._size_btns[n] = RoundedButton(
+                (x, sy + 28, 100, 38), _SIZES[n], self._font_btn,
+                color=(55, 55, 100), hover_color=(75, 75, 140),
+            )
+        self._size_label_y = sy + 8
+        self._size_note_y  = sy + 76
+
+        # ── Score limit (multi only) ───────────────────────────────────────────
+        sly = sy + 110
+        self._score_label_y = sly
+        self._score_dec = RoundedButton((cx - 74, sly + 22, 40, 40), "−", self._font_val)
+        self._score_inc = RoundedButton((cx + 34, sly + 22, 40, 40), "+", self._font_val)
+        self._score_val_y = sly + 42
+
+        # ── Timer toggle + duration ───────────────────────────────────────────
+        tmy = sly + 90
+        self._timer_label_y = tmy
+        self._timer_toggle  = RoundedButton((cx - 55, tmy + 22, 110, 36), "", self._font_btn)
+        self._timer_enabled = False
+        self._timer_secs    = 180
+
+        tdy = tmy + 72
+        self._tdur_label_y = tdy
+        self._timer_dec = RoundedButton((cx - 74, tdy + 22, 40, 40), "−", self._font_val)
+        self._timer_inc = RoundedButton((cx + 34, tdy + 22, 40, 40), "+", self._font_val)
+        self._tdur_val_y = tdy + 42
+
+        # ── Footer ────────────────────────────────────────────────────────────
+        self._btn_back = RoundedButton(
+            (20, H - 66, 140, 46), "◀  B A C K", self._font_btn,
+            color=(max(0, P2_COLOR[0]-30), max(0, P2_COLOR[1]-30), max(0, P2_COLOR[2]-30)),
+            hover_color=P2_COLOR,
+        )
+        bw_start = 220
+        self._btn_start = RoundedButton(
+            (cx - bw_start//2, H - 66, bw_start, 46), "▶  S T A R T", self._font_btn,
+            color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE,
+        )
+
+    # ─── Public interface ─────────────────────────────────────────────────────
 
     def handle_events(self, events):
-        # ... (Phần logic handle_events giữ nguyên 100% như code cũ bạn nhé) ...
+        """Old-style API: returns (state_str, data_or_None)."""
         for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = event.pos
-                for size, rect in self.rects_size.items():
-                    if rect and rect.collidepoint(mouse_pos): self.selected_size = size
-                for time_val, rect in self.rects_time.items():
-                    if rect and rect.collidepoint(mouse_pos): self.selected_time = time_val
-                if self.rects_img["DEFAULT"] and self.rects_img["DEFAULT"].collidepoint(mouse_pos):
-                    self.image_mode = "DEFAULT"
-                    self.full_image = None
-                if self.rects_img["CUSTOM"] and self.rects_img["CUSTOM"].collidepoint(mouse_pos):
-                    file_path = open_file_dialog()
-                    if file_path:
+            result = self._handle_event(event)
+            if result is not None:
+                return result
+        # Stay on this screen
+        state = "SETUP_MULTI" if self.is_multi else "SETUP_SINGLE"
+        return state, None
 
-                        crop_ui = CropImageMenu(self.screen, file_path, config.BOARD_SIZE)
-                        cropped = crop_ui.run()
+    def render(self) -> None:
+        W, H  = self.screen.get_size()
+        mouse = pygame.mouse.get_pos()
+        cx    = W // 2
 
-                        if cropped:
-                            self.full_image = cropped
-                            self.image_mode = "CUSTOM"
-                if self.rect_start and self.rect_start.collidepoint(mouse_pos):
-                    setup_data = {
-                        "size": self.selected_size,
-                        "time": self.selected_time,
-                        "image": self.full_image if self.image_mode == "CUSTOM" else None
-                    }
-                    return "PLAYING", setup_data
-                if self.rect_back and self.rect_back.collidepoint(mouse_pos):
-                    return "MENU", None
-        return "SETUP_SINGLE", None
+        self._bg.draw(self.screen)
 
-    def draw_gradient_rect(self, surface, rect, color_top, color_bottom, radius, shadow_color=None, shadow_offset=6, border_color=None, border_width=0):
-        """Hàm siêu xịn: Vẽ hình chữ nhật bo tròn có gradient và bóng đổ"""
-        # 1. Vẽ bóng (Shadow)
-        if shadow_color:
-            shadow_rect = pygame.Rect(rect.x, rect.y + shadow_offset, rect.width, rect.height)
-            pygame.draw.rect(surface, shadow_color, shadow_rect, border_radius=radius)
+        # Title
+        t = self._font_h1.render("G A M E   S E T U P", True, TEXT_COLOR)
+        self.screen.blit(t, t.get_rect(center=(cx, 35)))
 
-        # 2. Tạo Gradient Surface
-        grad_surf = pygame.Surface((1, 2), pygame.SRCALPHA)
-        grad_surf.set_at((0, 0), color_top)
-        grad_surf.set_at((0, 1), color_bottom)
-        grad_surf = pygame.transform.smoothscale(grad_surf, (rect.width, rect.height))
+        # Always render both columns so the P2 toggle is always visible.
+        # _draw_p2_column handles the disabled/enabled appearance internally.
+        self._draw_multi_columns(W, cx, mouse)
 
-        # 3. Tạo Mask bo tròn
-        mask = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(), border_radius=radius)
+        # Separator
+        pygame.draw.line(self.screen, (55, 55, 90), (40, 400), (W - 40, 400), 1)
 
-        # 4. Ép Mask vào Gradient
-        grad_surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        # Board-size selector
+        self._label("BOARD SIZE", cx, self._size_label_y)
+        n = self.selected_size
+        for size_n, btn in self._size_btns.items():
+            active = size_n == n
+            btn.color       = (50, 140, 70) if active else (55, 55, 100)
+            btn.hover_color = tuple(min(c + 25, 255) for c in btn.color)
+            btn.draw(self.screen, mouse)
+        note = self._font_tiny.render(f"{n}x{n} grid  ({n*n-1} tiles)", True, MUTED_TEXT)
+        self.screen.blit(note, note.get_rect(center=(cx, self._size_note_y)))
 
-        # 5. In lên màn hình
-        surface.blit(grad_surf, rect.topleft)
+        # Score limit (multiplayer only)
+        if self.is_multi:
+            self._label("SCORE LIMIT", cx, self._score_label_y)
+            self._score_dec.draw(self.screen, mouse)
+            val = self._font_val.render(str(self.selected_score), True, ACCENT)
+            self.screen.blit(val, val.get_rect(center=(cx, self._score_val_y)))
+            self._score_inc.draw(self.screen, mouse)
 
-        # 6. Vẽ viền (Nếu có)
-        if border_color and border_width > 0:
-            pygame.draw.rect(surface, border_color, rect, border_radius=radius, width=border_width)
+        # Timer toggle
+        _, H = self.screen.get_size()
+        self._label("TIMER", cx, self._timer_label_y)
+        self._timer_toggle.text        = "ON"  if self._timer_enabled else "OFF"
+        self._timer_toggle.color       = (45, 130, 55) if self._timer_enabled else (130, 50, 50)
+        self._timer_toggle.hover_color = (65, 160, 75) if self._timer_enabled else (160, 70, 70)
+        self._timer_toggle.draw(self.screen, mouse)
 
-    def draw_pill_button(self, surface, rect, text, is_active, font, btn_type="normal"):
-        """Sử dụng hàm draw_gradient_rect để tạo nút"""
-        if btn_type == "start":
-            c_top, c_bot = self.color_btn_st_top, self.color_btn_st_bot
-            c_shadow = self.color_btn_st_shadow
-            txt_color = self.color_text_active
-            border_color, border_width = None, 0
+        # Time per round
+        self._label("TIME PER ROUND", cx, self._tdur_label_y)
+        self._timer_dec.draw(self.screen, mouse)
+        m, s   = divmod(self._timer_secs, 60)
+        t_text = self._font_val.render(f"{m:02d}:{s:02d}", True, ACCENT)
+        self.screen.blit(t_text, t_text.get_rect(center=(cx, self._tdur_val_y)))
+        self._timer_inc.draw(self.screen, mouse)
+
+        # Footer
+        self._btn_back.draw(self.screen, mouse)
+        self._btn_start.draw(self.screen, mouse)
+
+    # ─── Private event handler ────────────────────────────────────────────────
+
+    def _handle_event(self, event):
+        """Returns (state, data) if a transition occurs, else None."""
+
+        # Back
+        if self._btn_back.handle_event(event):
+            return "MENU", None
+
+        # Player-2 toggle (add / remove)
+        if self._btn_p2_add.handle_event(event):
+            self.is_multi = True
+        if self._btn_p2_remove.handle_event(event):
+            self.is_multi = False
+
+        # Player-1 image buttons (always multi-column layout now)
+        if self._btn_p1_pick_multi.handle_event(event):
+            self._pick(1)
+        if self._btn_p1_default_multi.handle_event(event):
+            self._use_default(1)
+
+        # Player-2 image buttons (only when multi is on)
+        if self.is_multi:
+            if self._btn_p2_pick.handle_event(event):
+                self._pick(2)
+            if self._btn_p2_default.handle_event(event):
+                self._use_default(2)
+
+        # Board-size
+        for n, btn in self._size_btns.items():
+            if btn.handle_event(event):
+                self.selected_size = n
+
+        # Score limit (multiplayer only)
+        if self.is_multi:
+            if self._score_dec.handle_event(event):
+                self.selected_score = max(1, self.selected_score - 1)
+            if self._score_inc.handle_event(event):
+                self.selected_score = min(10, self.selected_score + 1)
+
+        # Timer toggle
+        if self._timer_toggle.handle_event(event):
+            self._timer_enabled = not self._timer_enabled
+        if self._timer_dec.handle_event(event):
+            self._timer_secs = max(30, self._timer_secs - 30)
+        if self._timer_inc.handle_event(event):
+            self._timer_secs = min(600, self._timer_secs + 30)
+
+        # Start
+        if self._btn_start.handle_event(event):
+            data = {
+                "size":          self.selected_size,
+                "time":          self._timer_secs if self._timer_enabled else 0,
+                "score":         self.selected_score,
+                "multiplayer":   self.is_multi,
+                "image":         self._full_image[1],   # P1 image (None = default)
+                "image_p2":      self._full_image[2],   # P2 image (None = default)
+            }
+            return "PLAYING", data
+
+        return None
+
+    # ─── Private draw helpers ─────────────────────────────────────────────────
+
+    def _draw_multi_columns(self, W, cx, mouse):
+        pygame.draw.line(self.screen, (55, 55, 90), (cx, 55), (cx, 380), 1)
+
+        # Player 1 column
+        self._draw_player_col(
+            player=1, col_cx=W//4, color=P1_COLOR,
+            prev_rect=self._prev_rect_multi[1],
+            btn_pick=self._btn_p1_pick_multi,
+            btn_def=self._btn_p1_default_multi,
+            mouse=mouse,
+        )
+
+        # Player 2 column — always drawn; inside we show toggle
+        self._draw_p2_column(W, cx, mouse)
+
+    def _draw_p2_column(self, W, cx, mouse):
+        """Player 2 column.
+        • Disabled: shows PLAYER 2 label (greyed) + big ‘+’ button to add.
+        • Enabled:  shows full controls + small ‘−’ button to remove.
+        """
+        col_cx = 3 * W // 4
+        color  = P2_COLOR
+
+        if not self.is_multi:
+            # ── P2 disabled: big "+" add button ──────────────────────────────
+            lbl = self._font_h1.render("PLAYER 2", True, MUTED_TEXT)
+            self.screen.blit(lbl, lbl.get_rect(center=(col_cx, 70)))
+
+            # Light dashed preview box
+            pr = self._prev_rect_multi[2]
+            pygame.draw.rect(self.screen, (210, 210, 210), pr, border_radius=8)
+            pygame.draw.rect(self.screen, (170, 170, 170), pr, 2, border_radius=8)
+
+            # Big "+" button centred in the preview area
+            self._btn_p2_add.rect.center = pr.center
+            self._btn_p2_add.draw(self.screen, mouse)
+
+            hint = self._font_tiny.render("Add Player 2", True, MUTED_TEXT)
+            self.screen.blit(hint, hint.get_rect(center=(col_cx, pr.bottom + 14)))
+            return
+
+        # ── P2 enabled: full column ──────────────────────────────────────────
+        lbl = self._font_h1.render("PLAYER 2", True, color)
+        self.screen.blit(lbl, lbl.get_rect(center=(col_cx, 70)))
+
+        # Small "−" remove button to the right of the header
+        self._btn_p2_remove.rect.centerx = col_cx + _PREVIEW // 2 + 18
+        self._btn_p2_remove.rect.centery = 70
+        self._btn_p2_remove.draw(self.screen, mouse)
+
+        self._draw_player_col(
+            player=2, col_cx=col_cx, color=color,
+            prev_rect=self._prev_rect_multi[2],
+            btn_pick=self._btn_p2_pick,
+            btn_def=self._btn_p2_default,
+            mouse=mouse,
+        )
+
+    def _draw_single_column(self, W, cx, mouse):
+        self._draw_player_col(
+            player=1, col_cx=cx, color=P1_COLOR,
+            prev_rect=self._prev_rect_single[1],
+            btn_pick=self._btn_p1_pick_single,
+            btn_def=self._btn_p1_default_single,
+            mouse=mouse,
+        )
+
+    def _draw_player_col(self, player, col_cx, color, prev_rect, btn_pick, btn_def, mouse):
+        lbl = self._font_h1.render(f"PLAYER {player}", True, color)
+        self.screen.blit(lbl, lbl.get_rect(center=(col_cx, 70)))
+
+        # Preview thumbnail
+        if self._preview[player]:
+            self.screen.blit(self._preview[player], prev_rect.topleft)
         else:
-            if is_active:
-                c_top, c_bot = self.color_btn_ac_top, self.color_btn_ac_bot
-                c_shadow = self.color_btn_ac_shadow
-                txt_color = self.color_text_active
-                border_color, border_width = None, 0
-            else:
-                c_top, c_bot = self.color_btn_in_top, self.color_btn_in_bot
-                c_shadow = self.color_btn_in_shadow
-                txt_color = self.color_text_inactive
-                border_color, border_width = (235, 205, 185), 3 # Viền mỏng cho nút chưa chọn
+            pygame.draw.rect(self.screen, PANEL_BG, prev_rect, border_radius=4)
+            hint = self._font_h2.render("default tiles", True, MUTED_TEXT)
+            self.screen.blit(hint, hint.get_rect(center=prev_rect.center))
+        pygame.draw.rect(self.screen, (70, 70, 110), prev_rect, 2, border_radius=4)
 
-        radius = rect.height // 2
-        self.draw_gradient_rect(surface, rect, c_top, c_bot, radius, c_shadow, 6, border_color, border_width)
+        # Status — always "Ready" since we default immediately
+        mode_txt = "Custom image" if self._image_mode[player] == "CUSTOM" else "Default tiles"
+        st = self._font_h2.render(mode_txt, True, (57, 255, 20))
+        self.screen.blit(st, st.get_rect(center=(col_cx, 284)))
 
-        text_surf = font.render(text, True, txt_color)
-        text_rect = text_surf.get_rect(center=rect.center)
-        surface.blit(text_surf, text_rect)
+        if self._error[player]:
+            err = self._font_tiny.render(self._error[player], True, (230, 80, 80))
+            self.screen.blit(err, err.get_rect(center=(col_cx, 372)))
 
-    def render(self):
-        screen_w, screen_h = self.screen.get_size()
-        center_x = screen_w // 2
+        btn_pick.draw(self.screen, mouse)
+        btn_def.draw(self.screen, mouse)
 
-        if self.bg_img: self.screen.blit(self.bg_img, (0, 0))
-        else: self.screen.fill((255, 230, 235))
+    # ─── Private helpers ──────────────────────────────────────────────────────
 
-        # 1. BẢNG ĐIỀU KHIỂN (Cũng dùng Gradient cho xịn)
-        panel_w, panel_h = int(screen_w * 0.85), int(screen_h * 0.78)
-        panel_rect = pygame.Rect(center_x - panel_w//2, int(screen_h * 0.12), panel_w, panel_h)
-        self.draw_gradient_rect(self.screen, panel_rect, self.color_panel_top, self.color_panel_bot, 25,
-                                shadow_color=(240, 210, 210), shadow_offset=8, border_color=self.color_panel_border, border_width=4)
+    def _label(self, text: str, cx: int, y: int) -> None:
+        surf = self._font_h2.render(text, True, MUTED_TEXT)
+        self.screen.blit(surf, surf.get_rect(center=(cx, y)))
 
-        # 2. BOX TIÊU ĐỀ
-        title_surf = self.font_start.render("TÙY CHỈNH TRẬN ĐẤU", True, self.color_text_active)
-        box_w, box_h = title_surf.get_width() + 80, title_surf.get_height() + 20
-        box_rect = pygame.Rect(center_x - box_w//2, panel_rect.y - box_h//2, box_w, box_h)
-        self.draw_gradient_rect(self.screen, box_rect, self.color_btn_st_top, self.color_btn_st_bot, 20,
-                                shadow_color=self.color_btn_st_shadow, shadow_offset=6, border_color=(255, 200, 210), border_width=4)
-        self.screen.blit(title_surf, (center_x - title_surf.get_width()//2, box_rect.y + 8))
+    def _pick(self, player: int) -> None:
+        self._error[player] = ""
+        path = open_file_dialog()
+        if not path:
+            return
+        try:
+            crop_ui = CropImageMenu(self.screen, path, config.BOARD_SIZE)
+            cropped = crop_ui.run()
+            if cropped:
+                self._full_image[player]  = cropped
+                self._image_mode[player]  = "CUSTOM"
+                # Build a _PREVIEW x _PREVIEW thumbnail
+                self._preview[player] = pygame.transform.smoothscale(
+                    cropped, (_PREVIEW, _PREVIEW)
+                )
+        except Exception as exc:
+            self._error[player] = f"Could not load: {exc}"
 
-        def draw_section_label(text, y_pos):
-            lbl_surf = self.font_label.render(text, True, self.color_text_title)
-            self.screen.blit(lbl_surf, (panel_rect.x + 40, y_pos))
+    def _use_default(self, player: int) -> None:
+        self._error[player]      = ""
+        self._full_image[player] = None
+        self._image_mode[player] = "DEFAULT"
+        self._preview[player]    = None
 
-        current_y = panel_rect.y + 60
 
-        # 3. KÍCH THƯỚC BÀN CỜ
-        draw_section_label("KÍCH THƯỚC BÀN CỜ", current_y)
-        current_y += 45
-        btn_w, btn_h, spacing, start_x = 90, 50, 25, panel_rect.x + 40
-        for i, size in enumerate([3, 4, 5, 6]):
-            rect = pygame.Rect(start_x + i * (btn_w + spacing), current_y, btn_w, btn_h)
-            self.rects_size[size] = rect
-            self.draw_pill_button(self.screen, rect, f"{size}x{size}", self.selected_size == size, self.font_btn)
-
-        current_y += 85
-
-        # 4. THỜI GIAN
-        draw_section_label("THỜI GIAN / VÁN", current_y)
-        current_y += 45
-        time_options = [(0, "KHÔNG GIỚI HẠN"), (120, "2:00"), (300, "5:00"), (600, "10:00")]
-        t_start_x = panel_rect.x + 40
-        for i, (val, text) in enumerate(time_options):
-            t_w = 200 if val == 0 else 85
-            rect = pygame.Rect(t_start_x, current_y, t_w, btn_h)
-            self.rects_time[val] = rect
-            self.draw_pill_button(self.screen, rect, text, self.selected_time == val, self.font_btn)
-            t_start_x += t_w + spacing
-
-        current_y += 85
-
-        # 5. HÌNH ẢNH SỬ DỤNG
-        draw_section_label("HÌNH ẢNH SỬ DỤNG", current_y)
-        current_y += 45
-        rect_default = pygame.Rect(panel_rect.x + 40, current_y, 140, btn_h)
-        self.rects_img["DEFAULT"] = rect_default
-        self.draw_pill_button(self.screen, rect_default, "MẶC ĐỊNH", self.image_mode == "DEFAULT", self.font_btn)
-
-        rect_custom = pygame.Rect(panel_rect.x + 200, current_y, 200, btn_h)
-        self.rects_img["CUSTOM"] = rect_custom
-        self.draw_pill_button(self.screen, rect_custom, "CHỌN ẢNH CROP", self.image_mode == "CUSTOM", self.font_btn)
-
-        if self.full_image and self.image_mode == "CUSTOM":
-            thumb_size = 220
-            thumb = pygame.transform.smoothscale(self.full_image, (thumb_size, thumb_size))
-            thumb_x, thumb_y = rect_custom.centerx - (thumb_size // 2), current_y + btn_h + 15
-            pygame.draw.rect(self.screen, (220, 190, 190), (thumb_x - 6, thumb_y - 2, thumb_size + 12, thumb_size + 12), border_radius=12)
-            pygame.draw.rect(self.screen, (255, 255, 255), (thumb_x - 6, thumb_y - 6, thumb_size + 12, thumb_size + 12), border_radius=12)
-            self.screen.blit(thumb, (thumb_x, thumb_y - 3))
-
-        # 6. NÚT QUAY LẠI VÀ BẮT ĐẦU
-        btn_bottom_y = panel_rect.bottom - 85
-        self.rect_back = pygame.Rect(panel_rect.x + 40, btn_bottom_y, 150, 60)
-        self.draw_pill_button(self.screen, self.rect_back, "QUAY LẠI", False, self.font_btn)
-
-        self.rect_start = pygame.Rect(panel_rect.right - 240, btn_bottom_y, 200, 65)
-        self.draw_pill_button(self.screen, self.rect_start, "BẮT ĐẦU", True, self.font_start, btn_type="start")
-
-class SetupMultiScreen:
+# ── Backward-compat alias so game_app.py keeps working unchanged ──────────────
+class SetupMultiScreen(SetupSingleScreen):
     def __init__(self, screen):
-        self.screen = screen
-
-        # --- TRẠNG THÁI LỰA CHỌN (MULTI) ---
-        self.selected_size = 4
-        self.selected_time = 0
-        self.selected_score = 3          # Mặc định chạm mốc 3 điểm sẽ thắng [cite: 57]
-        self.image_mode = "DEFAULT"
-        self.full_image = None
-
-        # --- BẢNG MÀU GRADIENT XUYÊN TÂM (Đậm viền -> Nhạt giữa) ---
-        self.color_panel_bg = (255, 246, 233)
-        self.color_panel_border = (248, 186, 186)
-        self.color_text_title = (205, 92, 92)
-        self.color_text_inactive = (196, 120, 120)
-        self.color_text_active = (255, 255, 255)
-
-        # Nút Inactive (Chưa chọn)
-        self.color_btn_in_edge = (235, 215, 190)
-        self.color_btn_in_center = (255, 252, 246)
-        self.color_btn_in_shadow = (225, 205, 180)
-
-        # Nút Active (Đã chọn)
-        self.color_btn_ac_edge = (110, 200, 165)
-        self.color_btn_ac_center = (180, 245, 220)
-        self.color_btn_ac_shadow = (95, 185, 150)
-
-        # Nút Bắt đầu
-        self.color_btn_st_edge = (230, 110, 140)
-        self.color_btn_st_center = (255, 185, 205)
-        self.color_btn_st_shadow = (210, 95, 125)
-
-        # --- LOAD ASSETS & FONTS ---
-        try:
-            self.bg_img = pygame.image.load("assets/images/bg_setup_new.png").convert()
-            self.bg_img = pygame.transform.scale(self.bg_img, self.screen.get_size())
-        except:
-            self.bg_img = None
-
-        try:
-            self.font_label = pygame.font.Font("assets/fonts/Baloo-Regular.ttf", 20) # Giảm font xíu để nhét vừa 4 mục
-            self.font_btn = pygame.font.Font("assets/fonts/Quicksand-Bold.ttf", 18)
-            self.font_start = pygame.font.Font("assets/fonts/Baloo-Regular.ttf", 32)
-        except:
-            self.font_label = pygame.font.SysFont("arial", 20, bold=True)
-            self.font_btn = pygame.font.SysFont("arial", 18, bold=True)
-            self.font_start = pygame.font.SysFont("arial", 30, bold=True)
-
-        self.rects_size = {3: None, 4: None, 5: None, 6: None}
-        self.rects_time = {0: None, 120: None, 300: None, 600: None}
-        self.rects_score = {1: None, 3: None, 5: None} # Thêm rect cho Điểm số
-        self.rects_img = {"DEFAULT": None, "CUSTOM": None}
-        self.rect_start = None
-        self.rect_back = None
-
-    def handle_events(self, events):
-        for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = event.pos
-
-                for size, rect in self.rects_size.items():
-                    if rect and rect.collidepoint(mouse_pos): self.selected_size = size
-
-                for time_val, rect in self.rects_time.items():
-                    if rect and rect.collidepoint(mouse_pos): self.selected_time = time_val
-
-                # Bắt sự kiện chọn điểm thắng
-                for score_val, rect in self.rects_score.items():
-                    if rect and rect.collidepoint(mouse_pos): self.selected_score = score_val
-
-                if self.rects_img["DEFAULT"] and self.rects_img["DEFAULT"].collidepoint(mouse_pos):
-                    self.image_mode = "DEFAULT"
-                    self.full_image = None
-
-                if self.rects_img["CUSTOM"] and self.rects_img["CUSTOM"].collidepoint(mouse_pos):
-                    file_path = open_file_dialog()
-                    if file_path:
-                        # Thay vì gọi hàm cũ, ta gọi Class UI Cắt ảnh mới
-                        crop_ui = CropImageMenu(self.screen, file_path, config.BOARD_SIZE)
-                        cropped = crop_ui.run() # Chạy vòng lặp của màn hình cắt ảnh
-
-                        if cropped:
-                            self.full_image = cropped
-                            self.image_mode = "CUSTOM"
-
-                if self.rect_start and self.rect_start.collidepoint(mouse_pos):
-                    setup_data = {
-                        "size": self.selected_size,
-                        "time": self.selected_time,
-                        "score": self.selected_score, # Gửi thêm dữ liệu điểm
-                        "image": self.full_image if self.image_mode == "CUSTOM" else None
-                    }
-                    return "PLAYING_MULTI", setup_data
-
-                if self.rect_back and self.rect_back.collidepoint(mouse_pos):
-                    return "MENU", None
-        return "SETUP_MULTI", None
-
-    def draw_radial_pill_button(self, surface, rect, text, is_active, font, btn_type="normal"):
-        """Vẽ nút với hiệu ứng Gradient từ Đậm ở viền -> Nhạt ở trung tâm"""
-        if btn_type == "start":
-            c_edge, c_center = self.color_btn_st_edge, self.color_btn_st_center
-            c_shadow = self.color_btn_st_shadow
-            txt_color = self.color_text_active
-        else:
-            if is_active:
-                c_edge, c_center = self.color_btn_ac_edge, self.color_btn_ac_center
-                c_shadow = self.color_btn_ac_shadow
-                txt_color = self.color_text_active
-            else:
-                c_edge, c_center = self.color_btn_in_edge, self.color_btn_in_center
-                c_shadow = self.color_btn_in_shadow
-                txt_color = self.color_text_inactive
-
-        radius = rect.height // 2
-
-        # 1. Vẽ bóng đổ (Shadow) tạo độ dày
-        shadow_rect = pygame.Rect(rect.x, rect.y + 6, rect.width, rect.height)
-        pygame.draw.rect(surface, c_shadow, shadow_rect, border_radius=radius)
-
-        # 2. Vẽ viền (Chỉ dành cho nút chưa được chọn)
-        if not is_active and btn_type == "normal":
-            pygame.draw.rect(surface, (230, 205, 185), rect, border_radius=radius)
-            inner_rect = rect.inflate(-4, -4)
-            inner_radius = max(2, radius - 2)
-        else:
-            inner_rect = rect
-            inner_radius = radius
-
-        # 3. Vẽ Gradient xuyên tâm bằng cách lồng các khối nhỏ dần
-        steps = 8
-        for i in range(steps):
-            t = i / (steps - 1)
-            # Tính toán nội suy màu
-            r = int(c_edge[0] + (c_center[0] - c_edge[0]) * t)
-            g = int(c_edge[1] + (c_center[1] - c_edge[1]) * t)
-            b = int(c_edge[2] + (c_center[2] - c_edge[2]) * t)
-
-            # Thu nhỏ kích thước dần vào giữa
-            shrink_x = int((inner_rect.width * 0.1) * t)
-            shrink_y = int((inner_rect.height * 0.3) * t)
-
-            current_rect = inner_rect.inflate(-shrink_x * 2, -shrink_y * 2)
-            current_radius = max(2, inner_radius - int(max(shrink_x, shrink_y)))
-
-            pygame.draw.rect(surface, (r, g, b), current_rect, border_radius=current_radius)
-
-        # 4. Vẽ Text
-        text_surf = font.render(text, True, txt_color)
-        text_rect = text_surf.get_rect(center=rect.center)
-        # Tạo hiệu ứng chữ in sâu nhẹ cho nút active
-        if is_active or btn_type == "start":
-            shadow_txt = font.render(text, True, c_edge)
-            surface.blit(shadow_txt, (text_rect.x, text_rect.y + 1))
-        surface.blit(text_surf, text_rect)
-
-    def render(self):
-        screen_w, screen_h = self.screen.get_size()
-        center_x = screen_w // 2
-
-        if self.bg_img: self.screen.blit(self.bg_img, (0, 0))
-        else: self.screen.fill((255, 230, 235))
-
-        # Bảng điều khiển (Làm cao hơn chút để chứa Điểm Thắng)
-        panel_w, panel_h = int(screen_w * 0.85), int(screen_h * 0.82)
-        panel_rect = pygame.Rect(center_x - panel_w//2, int(screen_h * 0.10), panel_w, panel_h)
-
-        pygame.draw.rect(self.screen, (240, 210, 210), (panel_rect.x+5, panel_rect.y+8, panel_w, panel_h), border_radius=25)
-        pygame.draw.rect(self.screen, self.color_panel_bg, panel_rect, border_radius=25)
-        pygame.draw.rect(self.screen, self.color_panel_border, panel_rect, border_radius=25, width=4)
-
-        # BOX TIÊU ĐỀ
-        title_surf = self.font_start.render("TÙY CHỈNH ĐỐI KHÁNG", True, self.color_text_active)
-        box_w, box_h = title_surf.get_width() + 80, title_surf.get_height() + 20
-        box_rect = pygame.Rect(center_x - box_w//2, panel_rect.y - box_h//2, box_w, box_h)
-
-        pygame.draw.rect(self.screen, self.color_btn_st_shadow, (box_rect.x, box_rect.y + 6, box_w, box_h), border_radius=20)
-        pygame.draw.rect(self.screen, self.color_btn_st_edge, box_rect, border_radius=20)
-        pygame.draw.rect(self.screen, (255, 200, 210), box_rect, border_radius=20, width=4)
-        self.screen.blit(title_surf, (center_x - title_surf.get_width()//2, box_rect.y + 8))
-
-        def draw_section_label(text, y_pos):
-            lbl_surf = self.font_label.render(text, True, self.color_text_title)
-            self.screen.blit(lbl_surf, (panel_rect.x + 40, y_pos))
-
-        current_y = panel_rect.y + 50
-        spacing_y = 75 # Giảm khoảng cách giữa các hàng để nhét vừa 4 mục
-
-        # 1. KÍCH THƯỚC BÀN CỜ
-        draw_section_label("KÍCH THƯỚC BÀN CỜ", current_y)
-        current_y += 35
-        btn_w, btn_h, spacing_x, start_x = 85, 45, 20, panel_rect.x + 40
-        for i, size in enumerate([3, 4, 5, 6]):
-            rect = pygame.Rect(start_x + i * (btn_w + spacing_x), current_y, btn_w, btn_h)
-            self.rects_size[size] = rect
-            self.draw_radial_pill_button(self.screen, rect, f"{size}x{size}", self.selected_size == size, self.font_btn)
-
-        current_y += spacing_y
-
-        # 2. ĐIỂM THẮNG (Mục mới cho đối kháng)
-        draw_section_label("ĐIỂM THẮNG (BEST OF)", current_y)
-        current_y += 35
-        for i, score in enumerate([1, 3, 5]):
-            rect = pygame.Rect(start_x + i * (btn_w + spacing_x), current_y, btn_w, btn_h)
-            self.rects_score[score] = rect
-            self.draw_radial_pill_button(self.screen, rect, str(score), self.selected_score == score, self.font_btn)
-
-        current_y += spacing_y
-
-        # 3. THỜI GIAN
-        draw_section_label("THỜI GIAN / VÁN", current_y)
-        current_y += 35
-        time_options = [(0, "KHÔNG GIỚI HẠN"), (120, "2:00"), (300, "5:00"), (600, "10:00")]
-        t_start_x = panel_rect.x + 40
-        for i, (val, text) in enumerate(time_options):
-            t_w = 190 if val == 0 else 85
-            rect = pygame.Rect(t_start_x, current_y, t_w, btn_h)
-            self.rects_time[val] = rect
-            self.draw_radial_pill_button(self.screen, rect, text, self.selected_time == val, self.font_btn)
-            t_start_x += t_w + spacing_x
-
-        current_y += spacing_y
-
-        # 4. HÌNH ẢNH SỬ DỤNG
-        draw_section_label("HÌNH ẢNH SỬ DỤNG CHUNG", current_y)
-        current_y += 35
-        rect_default = pygame.Rect(panel_rect.x + 40, current_y, 140, btn_h)
-        self.rects_img["DEFAULT"] = rect_default
-        self.draw_radial_pill_button(self.screen, rect_default, "MẶC ĐỊNH", self.image_mode == "DEFAULT", self.font_btn)
-
-        rect_custom = pygame.Rect(panel_rect.x + 200, current_y, 180, btn_h)
-        self.rects_img["CUSTOM"] = rect_custom
-        self.draw_radial_pill_button(self.screen, rect_custom, "CHỌN ẢNH", self.image_mode == "CUSTOM", self.font_btn)
-
-        if self.full_image and self.image_mode == "CUSTOM":
-            thumb_size = 90 # Giảm size ảnh xuống một xíu để khỏi đè lên nút dưới
-            thumb = pygame.transform.smoothscale(self.full_image, (thumb_size, thumb_size))
-            thumb_x, thumb_y = rect_custom.centerx - (thumb_size // 2), current_y + btn_h + 10
-            pygame.draw.rect(self.screen, (220, 190, 190), (thumb_x - 4, thumb_y - 2, thumb_size + 8, thumb_size + 8), border_radius=10)
-            pygame.draw.rect(self.screen, (255, 255, 255), (thumb_x - 4, thumb_y - 4, thumb_size + 8, thumb_size + 8), border_radius=10)
-            self.screen.blit(thumb, (thumb_x, thumb_y - 2))
-
-        # NÚT ĐIỀU HƯỚNG BÊN DƯỚI
-        btn_bottom_y = panel_rect.bottom - 80
-        self.rect_back = pygame.Rect(panel_rect.x + 40, btn_bottom_y, 140, 55)
-        self.draw_radial_pill_button(self.screen, self.rect_back, "QUAY LẠI", False, self.font_btn)
-
-        self.rect_start = pygame.Rect(panel_rect.right - 220, btn_bottom_y, 180, 60)
-        self.draw_radial_pill_button(self.screen, self.rect_start, "BẮT ĐẦU", True, self.font_start, btn_type="start")
+        super().__init__(screen, start_as_multi=True)

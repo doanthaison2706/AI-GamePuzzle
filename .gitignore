@@ -217,3 +217,8 @@ __marimo__/
 
 # Agent Rules
 .agents/
+.
+AGENTS.md
+CLAUDE.md
+.claude/skills/gitnexus
+.gitnexus

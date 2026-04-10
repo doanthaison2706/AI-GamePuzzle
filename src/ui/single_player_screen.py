@@ -6,6 +6,7 @@ from src.ui.renderer import Renderer
 from src.utils.image_crop import slice_image
 from src.ui.components import PillButton
 from src.core.settings_manager import SettingsManager
+from src.ai.bot import AIBot
 
 class SinglePlayerScreen:
     def __init__(self, screen, setup_data):
@@ -24,14 +25,23 @@ class SinglePlayerScreen:
         self.player = self.gm.players[0]
         self.board = self.gm.board
         self.show_full_image = False
+        
+        # --- LẤY DỮ LIỆU TỪ SETUP ---
+        p1_type = setup_data.get("p1_type", "HUMAN")
+        difficulty = setup_data.get("difficulty", "hard")
+        
+        self.is_bot = (p1_type == "BOT") # Lưu cờ xác nhận là BOT từ đầu
 
-        # Biến Kỷ lục (Giả lập tạm, bạn có thể lưu file sau)
+        # --- KHỞI TẠO AI ---
+        self.bot = AIBot(size=self.size, difficulty=difficulty)
+        self.is_ai_playing = self.is_bot # Nếu là BOT thì tự bật True luôn
+        self.last_bot_move_time = 0       
+        self.bot_speed = 300
+
         self.best_score = 35
         self.is_paused = False
-
-        # --- CHỈ CẦN THÊM ĐÚNG 2 DÒNG NÀY VÀO ĐÂY LÀ HẾT CRASH ---
-        self.is_winning = False   # Cờ đánh dấu đã xếp xong/bấm W
-        self.win_start_time = 0   # Lưu thời điểm bắt đầu thắng
+        self.is_winning = False   
+        self.win_start_time = 0   
 
         try:
             self.move_sound = pygame.mixer.Sound("assets/sounds/move.wav")
@@ -42,7 +52,6 @@ class SinglePlayerScreen:
         except:
             self.move_sound = None
 
-        # --- 1. LOAD ẢNH (BG, TITLE, KHUNG GỖ) ---
         try:
             self.bg_img = pygame.image.load("assets/images/bg_play.png").convert()
             self.bg_img = pygame.transform.scale(self.bg_img, self.screen.get_size())
@@ -56,13 +65,11 @@ class SinglePlayerScreen:
 
         try:
             self.wood_frame_img = pygame.image.load("assets/images/wood_frame.png").convert_alpha()
-            # Giả sử khung gỗ to hơn bàn cờ một chút (padding 20px mỗi cạnh)
             frame_size = config.BOARD_SIZE + 40
             self.wood_frame_img = pygame.transform.smoothscale(self.wood_frame_img, (frame_size, frame_size))
         except:
             self.wood_frame_img = None
 
-        # --- 2. LOAD FONTS ---
         try:
             self.font_stat = pygame.font.Font("assets/fonts/Baloo-Regular.ttf", 20)
             self.font_btn = pygame.font.Font("assets/fonts/Quicksand-Bold.ttf", 16)
@@ -70,7 +77,6 @@ class SinglePlayerScreen:
             self.font_stat = pygame.font.SysFont("arial", 20, bold=True)
             self.font_btn = pygame.font.SysFont("arial", 14, bold=True)
 
-        # --- 3. KHỞI TẠO 6 NÚT BẤM ---
         btn_w, btn_h = 90, 85
         spacing = 15
         total_w = btn_w * 6 + spacing * 5
@@ -89,11 +95,15 @@ class SinglePlayerScreen:
         self.btn_pause  = _pb(4, "TẠM DỪNG", (200,210,255), (150,170,255), (120,140,220))
         self.btn_quit   = _pb(5, "THOÁT",    (255,190,190), (255,140,140), (220,110,110))
 
+        # --- LÀM MỜ NÚT AI NẾU ĐÃ CHỌN LÀ BOT TỪ SETUP ---
+        if self.is_bot:
+            self.btn_ai.text = "🤖 TỰ ĐỘNG"
+            self.btn_ai.color_top = (180, 180, 180)
+            self.btn_ai.color_bot = (140, 140, 140)
+            self.btn_ai.shadow_color = (100, 100, 100)
 
     def handle_events(self, events):
-        # --- 1. KIỂM TRA DELAY KHI THẮNG GAME (Chạy mỗi frame) ---
         if self.is_winning:
-            # Đợi đủ 1500 mili-giây (1.5 giây) thì mới chuyển cảnh
             if pygame.time.get_ticks() - self.win_start_time >= 1500:
                 result_data = {
                     "time": self.gm.get_formatted_time(),
@@ -101,41 +111,56 @@ class SinglePlayerScreen:
                     "size": self.size
                 }
                 return "WIN_SINGLE", result_data
-
-            # Trong lúc đang delay chờ chuyển cảnh -> KHÓA thao tác, không cho bấm gì nữa
             return "PLAYING"
 
-        # --- 2. XỬ LÝ SỰ KIỆN CHUỘT/PHÍM BÌNH THƯỜNG ---
         for event in events:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.show_full_image = True
             elif event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
                 self.show_full_image = False
 
-            # Button clicks (handle_event fires on MOUSEUP)
-            if self.btn_hint.handle_event(event):   pass  # Gợi ý
-            if self.btn_ai.handle_event(event):     pass  # AI Giải
+            # --- NÚT AI GIẢI: Bật/tắt AI (Khóa lại nếu đã là BOT từ đầu) ---
+            if not self.is_bot and self.btn_ai.handle_event(event):
+                self.is_ai_playing = not self.is_ai_playing
+                if self.is_ai_playing:
+                    self.bot.clear_memory() 
+                self.btn_ai.text = "DỪNG AI" if self.is_ai_playing else "AI GIẢI"
+
             if self.btn_undo.handle_event(event):
-                if self.gm.undo() and self.move_sound: self.move_sound.play()
-            if self.btn_replay.handle_event(event): self.gm.new_game()
+                if self.gm.undo():
+                    self.bot.clear_memory() 
+                    if self.move_sound: self.move_sound.play()
+            
+            if self.btn_hint.handle_event(event): pass  
+            
+            # --- CHƠI LẠI: Tự động chạy AI nếu là BOT ---
+            if self.btn_replay.handle_event(event): 
+                self.gm.new_game()
+                self.is_winning = False
+                self.is_ai_playing = self.is_bot
+                if self.is_bot:
+                    self.bot.clear_memory()
+
             if self.btn_pause.handle_event(event):  self.is_paused = not self.is_paused
             if self.btn_quit.handle_event(event):   return "MENU"
 
-            # ---- [CHEAT KEY] Bấm phím 'W' để kích hoạt THẮNG ----
             if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
                 self.is_winning = True
-                self.win_start_time = pygame.time.get_ticks() # Bắt đầu bấm giờ
-                self.show_full_image = True # Bật full ảnh lên cho người chơi ngắm
-                self.gm.is_playing = False  # Dừng đồng hồ đếm giờ ngay lập tức
-                continue # Bỏ qua các sự kiện khác
+                self.win_start_time = pygame.time.get_ticks() 
+                self.show_full_image = True 
+                self.gm.is_playing = False  
+                self.is_ai_playing = False 
+                if not self.is_bot:
+                    self.btn_ai.text = "AI GIẢI"
+                continue 
 
-            # Trượt gạch
-            if self.gm.is_playing and not self.show_full_image and not self.is_paused:
+            if self.gm.is_playing and not self.show_full_image and not self.is_paused and not self.is_ai_playing:
                 move_success = False
+                
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     mx, my = event.pos
                     if config.MARGIN_LEFT <= mx <= config.MARGIN_LEFT + config.BOARD_SIZE and \
-                       config.MARGIN_TOP <= my <= config.MARGIN_TOP + config.BOARD_SIZE:
+                    config.MARGIN_TOP <= my <= config.MARGIN_TOP + config.BOARD_SIZE:
                         t_size = config.BOARD_SIZE // self.board.size
                         move_success = self.gm.process_move((my - config.MARGIN_TOP) // t_size, (mx - config.MARGIN_LEFT) // t_size)
 
@@ -151,8 +176,6 @@ class SinglePlayerScreen:
                 if move_success:
                     if self.move_sound: self.move_sound.play()
 
-                    # --- XỬ LÝ THẮNG THẬT (Tự chơi xếp xong) ---
-                    # Giả sử GameManager của bạn set is_playing = False khi bảng đã được xếp đúng
                     if not self.gm.is_playing:
                         self.is_winning = True
                         self.win_start_time = pygame.time.get_ticks()
@@ -164,8 +187,30 @@ class SinglePlayerScreen:
         if self.gm and not self.is_paused:
             self.gm.update_time(dt)
 
+        if self.is_ai_playing and self.gm.is_playing and not self.is_paused and not self.is_winning:
+            current_time = pygame.time.get_ticks()
+            
+            if current_time - self.last_bot_move_time >= self.bot_speed:
+                empty_r, empty_c = self.board.get_empty_pos() 
+                
+                dx, dy = self.bot.get_next_move(self.board.matrix, empty_r, empty_c)
+                
+                if (dx, dy) != (0, 0):
+                    target_r, target_c = empty_r + dx, empty_c + dy
+                    
+                    if self.gm.process_move(target_r, target_c):
+                        if self.move_sound: self.move_sound.play()
+                        self.last_bot_move_time = current_time 
+
+                        if not self.gm.is_playing:
+                            self.is_winning = True
+                            self.win_start_time = pygame.time.get_ticks()
+                            self.show_full_image = True
+                            self.is_ai_playing = False 
+                            if not self.is_bot:
+                                self.btn_ai.text = "AI GIẢI"
+
     def draw_gradient_rect(self, surface, rect, color_top, color_bottom, radius, shadow_color=None, shadow_offset=6, border_color=None):
-        """Kept for draw_top_stat_pill which uses a different visual style."""
         if shadow_color:
             shadow_rect = pygame.Rect(rect.x, rect.y + shadow_offset, rect.width, rect.height)
             pygame.draw.rect(surface, shadow_color, shadow_rect, border_radius=radius)
@@ -184,9 +229,7 @@ class SinglePlayerScreen:
             pygame.draw.rect(surface, border_color, rect, border_radius=radius, width=2)
 
     def draw_top_stat_pill(self, x, y, width, text, icon_color, text_color, is_record=False):
-        """Vẽ viên thuốc chứa thông số ở góc trên"""
         rect = pygame.Rect(x, y, width, 40)
-        # Nếu là kỷ lục thì vẽ màu hồng, còn lại vẽ màu xanh nhạt/trắng
         bg_color = (255, 220, 230) if is_record else (235, 245, 255)
         border_color = (255, 180, 200) if is_record else (200, 225, 255)
 
@@ -199,45 +242,36 @@ class SinglePlayerScreen:
     def render(self):
         screen_w, screen_h = self.screen.get_size()
 
-        # 1. VẼ NỀN
         if self.bg_img: self.screen.blit(self.bg_img, (0, 0))
         else: self.screen.fill((255, 246, 233))
 
-        # 2. VẼ TITLE
         if self.title_img:
             self.screen.blit(self.title_img, (screen_w//2 - self.title_img.get_width()//2, 10))
         else:
             title_txt = self.font_stat.render("CHƠI ĐƠN", True, (0, 120, 120))
             self.screen.blit(title_txt, (screen_w//2 - title_txt.get_width()//2, 25))
 
-        # 3. VẼ TOP STATS (Thời gian, Cấp độ, Bước, Kỷ lục)
         stat_y = 80
         color_text_blue = (50, 100, 150)
         color_text_red = (200, 80, 100)
 
-        self.draw_top_stat_pill(80, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue) # Lấy thời gian từ logic game
+        self.draw_top_stat_pill(80, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue) 
         self.draw_top_stat_pill(240, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
         self.draw_top_stat_pill(400, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
         self.draw_top_stat_pill(580, stat_y, 140, f"KỶ LỤC: {self.best_score}", color_text_red, color_text_red, is_record=True)
 
-        # 4. VẼ KHUNG GỖ & BÀN CỜ
-        # Canh giữa khung gỗ theo lề trái/trên của config
         if self.wood_frame_img:
             frame_x = config.MARGIN_LEFT - 20
             frame_y = config.MARGIN_TOP - 20
             self.screen.blit(self.wood_frame_img, (frame_x, frame_y))
         else:
-            # Vẽ nền giả lập khung gỗ nếu chưa có ảnh
             pygame.draw.rect(self.screen, (220, 180, 140),
                              (config.MARGIN_LEFT-20, config.MARGIN_TOP-20, config.BOARD_SIZE+40, config.BOARD_SIZE+40), border_radius=20)
             pygame.draw.rect(self.screen, (180, 130, 90),
                              (config.MARGIN_LEFT-20, config.MARGIN_TOP-20, config.BOARD_SIZE+40, config.BOARD_SIZE+40), border_radius=20, width=4)
 
-        # Gọi Renderer vẽ các mảnh gạch (Tiles) đè lên Khung Gỗ
-        # LƯU Ý: Phải xóa các hàm vẽ UI cũ trong Renderer đi, chỉ giữ lại hàm vẽ Tiles thôi nhé!
         self.renderer.draw_board(self.board.matrix, self.gm.size, self.image_slices, self.full_image, self.show_full_image)
 
-        # Nền mờ nếu đang Tạm dừng
         if self.is_paused:
             overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
             overlay.fill((255, 255, 255, 150))
@@ -245,7 +279,6 @@ class SinglePlayerScreen:
             pause_txt = self.font_stat.render("ĐÃ TẠM DỪNG", True, (200, 80, 100))
             self.screen.blit(pause_txt, pause_txt.get_rect(center=(screen_w//2, screen_h//2)))
 
-        # 5. VẼ 6 NÚT CÔNG CỤ Ở DƯỚI ĐÁY
         mouse = pygame.mouse.get_pos()
         self.btn_hint.draw(self.screen, mouse)
         self.btn_ai.draw(self.screen, mouse)

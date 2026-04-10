@@ -14,20 +14,37 @@ from src.ui.options_screen import OptionsScreen
 class GameApp:
     def __init__(self):
         pygame.init()
+        pygame.mixer.init()
         self.settings_mgr = SettingsManager()
         self.screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
         pygame.display.set_caption("N-Puzzle Arena")
         self.clock = pygame.time.Clock()
 
+        # --- BẬT NHẠC NỀN ---
+        try:
+            pygame.mixer.music.load("assets/sounds/soundgame.wav")
+            pygame.mixer.music.play(-1)  # Phát lặp vô hạn
+        except Exception as e:
+            print(f"⚠️ Không thể load nhạc nền: {e}")
+
         self.state = "MAIN_MENU"
         self.current_screen = MainMenuScreen(self.screen)
         self.last_setup_data = None
+        self._apply_settings()
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
+    def _apply_settings(self):
+        """Update global systems like music volume based on settings."""
+        vol = self.settings_mgr.get("music_volume")
+        if vol is not None:
+            pygame.mixer.music.set_volume(vol / 100.0)
+
     def _go_menu(self):
         """Return to main menu."""
+        self._apply_settings()
         self.state = "MAIN_MENU"
+
         self.current_screen = MainMenuScreen(self.screen)
 
     def _go_setup(self, start_as_multi: bool = False):

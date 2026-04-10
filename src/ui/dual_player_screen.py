@@ -3,6 +3,7 @@ from configs import game_config as config
 from src.core.base_game_manager import BaseGameManager
 from src.core.dual_game_manager import DualGameManager
 from src.core.player import PlayerSlot, PlayerType
+from src.core.settings_manager import SettingsManager
 from src.ui.renderer import Renderer
 from src.ui.components import PillButton
 
@@ -78,6 +79,10 @@ class DualPlayerScreen:
         # Âm thanh
         try:
             self.move_sound = pygame.mixer.Sound("assets/sounds/move.wav")
+            mgr = SettingsManager()
+            vol = mgr.get("move_volume")
+            if vol is not None:
+                self.move_sound.set_volume(vol / 100.0)
         except Exception:
             self.move_sound = None
 

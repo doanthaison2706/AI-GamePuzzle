@@ -1,28 +1,35 @@
 import pygame
 
-# Khởi tạo module hiển thị để Pygame có thể "đọc" được phần cứng
 pygame.display.init()
 screen_info = pygame.display.Info()
 
-# Kích thước thật của màn hình máy tính (Ví dụ: 1920x1080 hoặc 2560x1600 trên Mac)
 MONITOR_WIDTH = screen_info.current_w
 MONITOR_HEIGHT = screen_info.current_h
 
-# --- THIẾT LẬP KÍCH THƯỚC ĐỘNG ---
-# Chiều cao cửa sổ = 90% chiều cao màn hình (Chừa chỗ cho Taskbar / Mac Dock)
+# --- Giao diện Fixed Size dựa trên Dual Player ---
 WINDOW_HEIGHT = int(MONITOR_HEIGHT * 0.9)
 
-# Chiều rộng cửa sổ chơi đơn = 80% chiều cao (Tạo ra tỷ lệ hình chữ nhật đứng chuẩn Mobile)
-# (Sau này làm màn Chơi Đôi, ta chỉ cần nhân đôi chiều rộng này lên)
-WINDOW_WIDTH = int(WINDOW_HEIGHT * 0.8)
+# Kích thước khung cửa sổ là cố định và lấy theo tỷ lệ của Dual Player
+WINDOW_WIDTH = int(WINDOW_HEIGHT * 1.6)
+DUAL_WINDOW_WIDTH = WINDOW_WIDTH # Tương thích ngược với các file UI cũ
 
-# --- TÍNH TOÁN TỌA ĐỘ BÀN CỜ THEO TỶ LỆ ---
-# Bàn cờ luôn chiếm 80% chiều rộng cửa sổ
-BOARD_SIZE = int(WINDOW_WIDTH * 0.8)
-
-# Đẩy bàn cờ xuống vị trí 22% tính từ đỉnh màn hình
+# Board Size cho Single Player
+BOARD_SIZE = int(WINDOW_HEIGHT * 0.8 * 0.8) # (old WINDOW_WIDTH = HEIGHT*0.8) * 0.8
+if BOARD_SIZE > WINDOW_HEIGHT * 0.7:
+    BOARD_SIZE = int(WINDOW_HEIGHT * 0.7)
 MARGIN_TOP = int(WINDOW_HEIGHT * 0.22)
 MARGIN_LEFT = (WINDOW_WIDTH - BOARD_SIZE) // 2
+
+# Board Size cho Dual Player
+DUAL_BOARD_SIZE = int(WINDOW_WIDTH * 0.42)
+if DUAL_BOARD_SIZE > WINDOW_HEIGHT * 0.6:
+    DUAL_BOARD_SIZE = int(WINDOW_HEIGHT * 0.6)
+DUAL_MARGIN_TOP = MARGIN_TOP
+DUAL_P1_LEFT = int(WINDOW_WIDTH * 0.04)
+DUAL_P2_LEFT = WINDOW_WIDTH - DUAL_BOARD_SIZE - DUAL_P1_LEFT
+
+def update_configs():
+    pass
 
 # Bảng màu
 FPS = 60
@@ -43,19 +50,3 @@ P1_COLOR        = ( 80, 160, 220)   # player 1 blue
 P2_COLOR        = (220,  90,  90)   # player 2 red
 WIN_COLOR       = ( 60, 200, 120)   # win / success green
 PANEL_BG        = (220, 215, 205)   # panel background
-
-# --- DUAL PLAYER LAYOUT ---
-# Cửa sổ chơi đôi rộng gấp đôi cửa sổ chơi đơn
-DUAL_WINDOW_WIDTH = int(WINDOW_HEIGHT * 1.6)
-
-# Mỗi board chiếm ~42% chiều rộng cửa sổ đôi (để còn khoảng cách giữa)
-DUAL_BOARD_SIZE = int(DUAL_WINDOW_WIDTH * 0.42)
-
-# Cách đỉnh cửa sổ 22% (giống chơi đơn)
-DUAL_MARGIN_TOP = int(WINDOW_HEIGHT * 0.22)
-
-# Lề trái của P1 board (cách mép trái 3%)
-DUAL_P1_LEFT = int(DUAL_WINDOW_WIDTH * 0.03)
-
-# Lề trái của P2 board (cách mép phải 3%)
-DUAL_P2_LEFT = int(DUAL_WINDOW_WIDTH * 0.55)

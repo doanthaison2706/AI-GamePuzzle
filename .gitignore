@@ -222,3 +222,6 @@ AGENTS.md
 CLAUDE.md
 .claude/skills/gitnexus
 .gitnexus
+
+# Game config
+configs/settings.json

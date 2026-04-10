@@ -13,7 +13,7 @@ def train():
     agent = DQNAgent(state_size, action_size)
 
     # 2. THIẾT LẬP CHIẾN DỊCH HUẤN LUYỆN
-    EPISODES = 10000     # Số ván chơi.
+    EPISODES = 8000     # Số ván chơi.
     MAX_STEPS = 200      # Giới hạn số bước mỗi ván
 
     print("🚀 Bắt đầu khóa huấn luyện AI (Deep Q-Network)...")
@@ -46,11 +46,11 @@ def train():
             agent.update_target_model()
 
         # --- TRÍCH XUẤT 3 CẤP ĐỘ MODEL ---
-        if e == 500:
+        if e == 1000:
             torch.save(agent.model.state_dict(), "puzzle_easy.pth")
             print("\n💾 ĐÃ LƯU: Model Dễ (puzzle_easy.pth)\n")
 
-        if e == 3000:
+        if e == 4000:
             torch.save(agent.model.state_dict(), "puzzle_medium.pth")
             print("\n💾 ĐÃ LƯU: Model Trung Bình (puzzle_medium.pth)\n")
 

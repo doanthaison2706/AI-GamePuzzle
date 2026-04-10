@@ -1,103 +1,106 @@
 import pygame
 import sys
 from configs import game_config as config
-from src.ui.components import Button
 
 class MainMenuScreen:
     def __init__(self, screen):
         self.screen = screen
+        self.last_size = (0, 0)
         
-        # 1. TẢI TÀI NGUYÊN (Chỉ tải ảnh gốc, chưa scale vội)
+        # --- 1. TẢI TÀI NGUYÊN (4 ảnh nút đã có sẵn chữ) ---
         try:
-            self.original_bg = pygame.image.load("Assets/images/background.png").convert()
-            self.cached_bg = None
-            self.last_size = (0, 0) # Dùng để check xem cửa sổ có bị kéo to ra không
+            self.original_bg = pygame.image.load("assets/images/background_menu.png").convert()
+            self.logo_image = pygame.image.load("assets/images/title_logo.png").convert_alpha()
             
-            self.logo_image = pygame.image.load("Assets/images/logo.png").convert_alpha()
+            # Load 4 file ảnh nút riêng biệt (Ảnh đã có chữ)
+            self.img_single = pygame.image.load("assets/images/btn_single.png").convert_alpha()
+            self.img_multi = pygame.image.load("assets/images/btn_multi.png").convert_alpha()
+            self.img_setting = pygame.image.load("assets/images/btn_option.png").convert_alpha()
+            self.img_exit = pygame.image.load("assets/images/btn_exit.png").convert_alpha()
+            
         except Exception as e:
-            print("⚠️ Lỗi tải ảnh:", e)
-            self.original_bg = None
-            self.logo_image = None
+            print("⚠️ Lỗi tải ảnh Menu:", e)
+            self.original_bg = self.logo_image = None
+            self.img_single = self.img_multi = self.img_setting = self.img_exit = None
 
-        # 2. KHỞI TẠO NÚT (Tọa độ tạm thời, lát render sẽ tính lại chuẩn)
-        btn_w, btn_h = 320, 65
-        color_pink = (247, 168, 196)
-        color_mint = (159, 227, 214)
-        color_blue = (169, 214, 245)
-        color_lavender = (203, 183, 246)
-        text_color = (255, 255, 255)
+        # Khởi tạo các Rect rỗng
+        self.rects = {
+            "single": pygame.Rect(0,0,0,0),
+            "multi": pygame.Rect(0,0,0,0),
+            "setting": pygame.Rect(0,0,0,0),
+            "exit": pygame.Rect(0,0,0,0)
+        }
 
-        self.btn_single = Button(0, 0, btn_w, btn_h, "CHƠI ĐƠN", color_pink, (255, 180, 210), text_color)
-        self.btn_multi = Button(0, 0, btn_w, btn_h, "ĐỐI KHÁNG", color_mint, (170, 240, 225), text_color)
-        self.btn_setting = Button(0, 0, btn_w, btn_h, "TÙY CHỈNH", color_blue, (180, 225, 255), text_color)
-        self.btn_exit = Button(0, 0, btn_w, btn_h, "THOÁT", color_lavender, (220, 200, 255), text_color)
+    def _update_layout(self):
+        sw, sh = self.screen.get_size()
+        if self.last_size == (sw, sh):
+            return
+        
+        self.last_size = (sw, sh)
+        center_x = sw // 2
+        self.scale = max(0.7, min(sw / 1200, sh / 800))
+
+        # Kích thước nút (Tỷ lệ 350x75 là chuẩn cho các nút của bạn)
+        btn_w = int(380 * self.scale)
+        btn_h = int(85 * self.scale)
+        
+        # --- CĂN CHỈNH VỊ TRÍ ---
+        # Đẩy cụm nút xuống dưới Logo
+        start_y = int(sh * 0.52) 
+        gap = int(sh * 0.11)
+
+        self.rects["single"] = pygame.Rect(center_x - btn_w//2, start_y, btn_w, btn_h)
+        self.rects["multi"] = pygame.Rect(center_x - btn_w//2, start_y + gap, btn_w, btn_h)
+        self.rects["setting"] = pygame.Rect(center_x - btn_w//2, start_y + gap * 2, btn_w, btn_h)
+        self.rects["exit"] = pygame.Rect(center_x - btn_w//2, start_y + gap * 3, btn_w, btn_h)
+
+    def draw_custom_button(self, surface, rect, image):
+        """Chỉ vẽ ảnh nút (Vì ảnh đã có sẵn text)"""
+        if image:
+            scaled_img = pygame.transform.smoothscale(image, (rect.width, rect.height))
+            surface.blit(scaled_img, rect.topleft)
+        else:
+            # Dự phòng nếu lỗi ảnh: Vẽ khung xám
+            pygame.draw.rect(surface, (200, 200, 200), rect, border_radius=15)
 
     def handle_events(self, events):
+        self._update_layout()
         for event in events:
-            if self.btn_single.handle_event(event):
-                return "SETUP_SINGLE", None 
-            if self.btn_multi.handle_event(event):
-                return "SETUP_MULTI", None
-            if self.btn_setting.handle_event(event):
-                pass
-            if self.btn_exit.handle_event(event):
-                pygame.quit()
-                sys.exit()
-                
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                pos = event.pos
+                if self.rects["single"].collidepoint(pos): return "SETUP_SINGLE", None
+                if self.rects["multi"].collidepoint(pos): return "SETUP_MULTI", None
+                if self.rects["setting"].collidepoint(pos): return "SETTING", None
+                if self.rects["exit"].collidepoint(pos):
+                    pygame.quit()
+                    sys.exit()
+                    
         return "MAIN_MENU", None
 
     def render(self):
-        # Lấy kích thước THỰC TẾ của cửa sổ ngay lúc này
-        current_w, current_h = self.screen.get_size()
-        center_x = current_w // 2
+        self._update_layout()
+        sw, sh = self.screen.get_size()
+        center_x = sw // 2
 
-        # ==========================================
-        # 1. VẼ NỀN (Tự động lấp đầy khoảng trắng)
-        # ==========================================
+        # 1. Vẽ Nền
         if self.original_bg:
-            # Thuật toán Cache: Chỉ scale lại ảnh nếu kích thước cửa sổ bị thay đổi (để chống lag)
-            if self.last_size != (current_w, current_h):
-                self.cached_bg = pygame.transform.smoothscale(self.original_bg, (current_w, current_h))
-                self.last_size = (current_w, current_h)
-            
-            self.screen.blit(self.cached_bg, (0, 0))
+            bg_scaled = pygame.transform.smoothscale(self.original_bg, (sw, sh))
+            self.screen.blit(bg_scaled, (0, 0))
         else:
             self.screen.fill((245, 245, 245))
 
-        # ==========================================
-        # 2. VẼ LOGO (Tự động căn giữa trên cùng)
-        # ==========================================
+        # 2. Vẽ Logo (Đẩy lên trên cùng để tránh đè nút)
         if self.logo_image:
-            # Tự co giãn logo chiếm 70% chiều rộng màn hình
-            logo_w = int(current_w * 0.7)
-            logo_ratio = self.logo_image.get_height() / self.logo_image.get_width()
-            scaled_logo = pygame.transform.smoothscale(self.logo_image, (logo_w, int(logo_w * logo_ratio)))
+            logo_w = int(sw * 0.5)
+            ratio = self.logo_image.get_height() / self.logo_image.get_width()
+            logo_h = int(logo_w * ratio)
+            logo_scaled = pygame.transform.smoothscale(self.logo_image, (logo_w, logo_h))
             
-            logo_rect = scaled_logo.get_rect(center=(center_x, int(current_h * 0.25)))
-            self.screen.blit(scaled_logo, logo_rect)
+            # Đặt logo ở vị trí 5% chiều cao màn hình tính từ đỉnh
+            self.screen.blit(logo_scaled, logo_scaled.get_rect(centerx=center_x, top=int(sh * 0.05)))
 
-        # ==========================================
-        # 3. VẼ NÚT (Tự động nhảy ra giữa màn hình)
-        # ==========================================
-        # Tính toán tọa độ Y linh hoạt theo chiều cao màn hình
-        start_y = int(current_h * 0.48)
-        gap = int(current_h * 0.11)
-
-        # Ép các nút nhảy ra giữa
-        self.btn_single.rect.x = center_x - self.btn_single.rect.w // 2
-        self.btn_single.rect.y = start_y
-        
-        self.btn_multi.rect.x = center_x - self.btn_multi.rect.w // 2
-        self.btn_multi.rect.y = start_y + gap
-        
-        self.btn_setting.rect.x = center_x - self.btn_setting.rect.w // 2
-        self.btn_setting.rect.y = start_y + gap * 2
-        
-        self.btn_exit.rect.x = center_x - self.btn_exit.rect.w // 2
-        self.btn_exit.rect.y = start_y + gap * 3
-
-        # Vẽ ra
-        self.btn_single.draw(self.screen)
-        self.btn_multi.draw(self.screen)
-        self.btn_setting.draw(self.screen)
-        self.btn_exit.draw(self.screen)
+        # 3. Vẽ 4 Nút (Không dùng text render)
+        self.draw_custom_button(self.screen, self.rects["single"], self.img_single)
+        self.draw_custom_button(self.screen, self.rects["multi"], self.img_multi)
+        self.draw_custom_button(self.screen, self.rects["setting"], self.img_setting)
+        self.draw_custom_button(self.screen, self.rects["exit"], self.img_exit)

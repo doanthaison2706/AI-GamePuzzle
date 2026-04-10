@@ -7,8 +7,8 @@ from src.ui.single_player_screen import SinglePlayerScreen
 from src.ui.setup_multi_screen import SetupMultiScreen
 from src.ui.multi_player_screen import MultiPlayerScreen
 from src.ui.win_single_screen import WinSingleScreen 
-# Bạn có thể import WinMultiScreen sau khi chúng ta code xong nó
-# from src.ui.win_multi_screen import WinMultiScreen 
+from src.ui.win_multi_screen import WinMultiScreen 
+from src.ui.option_screen import SettingScreen
 
 class GameApp:
     def __init__(self):
@@ -37,10 +37,19 @@ class GameApp:
                 if next_state == "SETUP_SINGLE":
                     self.state = "SETUP_SINGLE"
                     self.current_screen = SetupSingleScreen(self.screen)
-                # FIX 1: THÊM LỐI VÀO CHO SETUP MULTI TỪ MAIN MENU
                 elif next_state == "SETUP_MULTI":
                     self.state = "SETUP_MULTI"
                     self.current_screen = SetupMultiScreen(self.screen)
+
+                elif next_state == "SETTING": 
+                    self.state = "SETTING"
+                    self.current_screen = SettingScreen(self.screen)
+
+            elif self.state == "SETTING":
+                next_state, settings_data = self.current_screen.handle_events(events)
+                if next_state == "MENU":
+                    self.state = "MAIN_MENU"
+                    self.current_screen = MainMenuScreen(self.screen)
                     
             elif self.state == "SETUP_SINGLE":
                 next_state, setup_data = self.current_screen.handle_events(events)
@@ -81,8 +90,7 @@ class GameApp:
                 elif next_state == "MENU":
                     self.state = "MAIN_MENU"
                     self.current_screen = MainMenuScreen(self.screen)
-
-            # --- NHÁNH CHƠI ĐỐI KHÁNG ---
+                    
             elif self.state == "SETUP_MULTI":
                 next_state, setup_data = self.current_screen.handle_events(events)
                 if next_state == "PLAYING_MULTI":
@@ -98,15 +106,13 @@ class GameApp:
                     self.current_screen = MainMenuScreen(self.screen)
 
             elif self.state == "PLAYING_MULTI":
-                # FIX 2: BỔ SUNG ĐẦY ĐỦ LOGIC ĐÓN KẾT QUẢ TRẢ VỀ
                 result = self.current_screen.handle_events(events)
                 if isinstance(result, tuple):
-                    next_state, result_data = result
+                    next_state, result_data = result 
                 else:
                     next_state = result
                     result_data = None
                 
-                # RẤT QUAN TRỌNG: Gọi update để Game chạy AI và delay lúc thắng
                 self.current_screen.update()
                 
                 if next_state == "MENU":
@@ -115,14 +121,20 @@ class GameApp:
                     self.current_screen = MainMenuScreen(self.screen)
                     
                 elif next_state == "WIN_MULTI":
-                    pass # Chờ code WinMultiScreen xong sẽ nhét vào đây
-                    print(f"Bên chiến thắng chung cuộc là: P{result_data['winner']}")
-                    # Tạm thời quay về Menu khi thắng
+                    self.state = "WIN_MULTI"
+                    self.current_screen = WinMultiScreen(self.screen, result_data)
+
+            elif self.state == "WIN_MULTI":
+                next_state, _ = self.current_screen.handle_events(events)
+                
+                if next_state == "REPLAY":
+                    self.state = "PLAYING_MULTI"
+                    self.current_screen = MultiPlayerScreen(self.screen, self.last_setup_data)
+                elif next_state == "MENU":
                     self.state = "MAIN_MENU"
                     self.screen = self.resize_window("PORTRAIT")
                     self.current_screen = MainMenuScreen(self.screen)
 
-            # --- VẼ GIAO DIỆN ---
             self.screen.fill(config.BG_COLOR)
             self.current_screen.render()
             

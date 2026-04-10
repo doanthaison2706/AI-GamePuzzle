@@ -4,27 +4,31 @@ import pygame
 pygame.display.init()
 screen_info = pygame.display.Info()
 
-# Kích thước thật của màn hình máy tính (Ví dụ: 1920x1080 hoặc 2560x1600 trên Mac)
+# Kích thước thật của màn hình máy tính
 MONITOR_WIDTH = screen_info.current_w
 MONITOR_HEIGHT = screen_info.current_h
 
-# --- THIẾT LẬP KÍCH THƯỚC ĐỘNG ---
-# Chiều cao cửa sổ = 90% chiều cao màn hình (Chừa chỗ cho Taskbar / Mac Dock)
-WINDOW_HEIGHT = int(MONITOR_HEIGHT * 0.9)
+# --- THIẾT LẬP KÍCH THƯỚC CỬA SỔ (NGANG - TỶ LỆ 16:9) ---
+# Lấy chiều rộng bằng 80% màn hình thật
+WINDOW_WIDTH = int(MONITOR_WIDTH * 0.8)
+# Chiều cao tính theo chuẩn 16:9 (như màn hình PC/Youtube)
+WINDOW_HEIGHT = int(WINDOW_WIDTH * (9 / 16))
 
-# Chiều rộng cửa sổ chơi đơn = 80% chiều cao (Tạo ra tỷ lệ hình chữ nhật đứng chuẩn Mobile)
-# (Sau này làm màn Chơi Đôi, ta chỉ cần nhân đôi chiều rộng này lên)
-WINDOW_WIDTH = int(WINDOW_HEIGHT * 0.8)
+# Đảm bảo an toàn: Nếu tính ra chiều cao mà vượt quá 90% màn hình thật (bị lẹm Taskbar)
+# Thì ta tính ngược lại từ chiều cao
+if WINDOW_HEIGHT > MONITOR_HEIGHT * 0.9:
+    WINDOW_HEIGHT = int(MONITOR_HEIGHT * 0.9)
+    WINDOW_WIDTH = int(WINDOW_HEIGHT * (16 / 9))
 
-# --- TÍNH TOÁN TỌA ĐỘ BÀN CỜ THEO TỶ LỆ ---
-# Bàn cờ luôn chiếm 80% chiều rộng cửa sổ
-BOARD_SIZE = int(WINDOW_WIDTH * 0.8)
+# --- TỌA ĐỘ BÀN CỜ (Giá trị khởi tạo) ---
+# Các giá trị này giờ chỉ là Placeholder (giữ chỗ). 
+# Trong các Class màn chơi (như SinglePlayerScreen) sẽ tự động ghi đè lại 
+# để đảm bảo tính Responsive.
+BOARD_SIZE = 540
+MARGIN_LEFT = 80
+MARGIN_TOP = 130
 
-# Đẩy bàn cờ xuống vị trí 22% tính từ đỉnh màn hình
-MARGIN_TOP = int(WINDOW_HEIGHT * 0.22) 
-MARGIN_LEFT = (WINDOW_WIDTH - BOARD_SIZE) // 2
-
-# Bảng màu
+# --- CẤU HÌNH CHUNG ---
 FPS = 60
 BG_COLOR = (245, 245, 245)      
 TEXT_COLOR = (50, 50, 50)       

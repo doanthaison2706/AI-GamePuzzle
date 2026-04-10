@@ -12,7 +12,7 @@ class MultiPlayerScreen:
         
         # --- SỬA LỖI CHÍ MẠNG: KÍCH THƯỚC ĐỘNG THEO BOARD_SIZE ---
         b_size = config.BOARD_SIZE
-        self.gap = 80         # Khoảng cách trống ở giữa 2 bàn
+        self.gap = 180 
         self.side_margin = 60 # Khoảng cách lề 2 bên
         
         # Chiều rộng tự động = 2 Lề + 2 Bàn cờ + Khoảng trống giữa
@@ -33,7 +33,8 @@ class MultiPlayerScreen:
             size=setup_data["size"],
             target_score=setup_data["score"],
             mode=setup_data.get("mode", "PvP"),
-            ai_difficulty=setup_data.get("difficulty", "medium")
+            ai_difficulty=setup_data.get("difficulty", "medium"),
+            time_limit=setup_data.get("time", 0)
         )
         self.is_paused = False 
 
@@ -44,15 +45,12 @@ class MultiPlayerScreen:
 
         # --- LOAD ẢNH NỀN & TITLE ---
         try:
-            self.bg_img = pygame.image.load("assets/images/bg_play.png").convert()
+            self.bg_img = pygame.image.load("assets/images/background_gameplay.png").convert()
             self.bg_img = pygame.transform.scale(self.bg_img, (self.base_w, self.base_h))
         except: 
             self.bg_img = None
-
-        try:
-            self.title_img = pygame.image.load("assets/images/title_multi.png").convert_alpha()
-        except: 
-            self.title_img = None
+            
+        self.title_img = None
 
         # --- LOAD FONTS ---
         try:
@@ -65,15 +63,15 @@ class MultiPlayerScreen:
             self.font_btn = pygame.font.SysFont("arial", 16, bold=True)
 
         # --- LOAD 5 ẢNH NÚT / HOẶC DÙNG NÚT VẼ DỰ PHÒNG ---
-        btn_w, btn_h = 130, 80
+        btn_w, btn_h = 110, 50
         spacing = 30
         total_w = (btn_w * 5) + (spacing * 4)
         start_x = (self.base_w - total_w) // 2
 
         self.btn_images = {}
-        btn_files = ["btn_hint_p1.png", "btn_restart.png", "btn_exit.png", "btn_pause.png", "btn_hint_p2.png"]
+        btn_files = ["btn_hint1.png", "btn_restart.png", "btn_exit_2.png", "btn_pause.png", "btn_hint2.png"]
         self.btn_ids = ["hint1", "restart", "exit", "pause", "hint2"]
-        self.btn_texts = ["GỢI Ý P1", "CHƠI LẠI", "THOÁT", "TẠM DỪNG", "GỢI Ý P2"] # Chữ dự phòng
+        self.btn_texts = ["GỢI Ý P1", "CHƠI LẠI", "THOÁT", "TẠM DỪNG", "GỢI Ý P2"] 
         
         for i, name in enumerate(btn_files):
             try:
@@ -96,22 +94,50 @@ class MultiPlayerScreen:
             self.review_image = pygame.transform.smoothscale(self.full_image, (150, 150))
             # Cắt ảnh cho các ô gạch giống y hệt màn chơi đơn
             _, self.image_slices = slice_image(self.full_image, config.BOARD_SIZE, self.manager.size)
+            
+        try:
+            self.icon_p1 = pygame.image.load(
+                "assets/images/icon_p1.png"
+            ).convert_alpha()
+
+            self.icon_p1 = pygame.transform.smoothscale(
+                self.icon_p1,
+                (28, 28)
+            )
+        except:
+            self.icon_p1 = None
+
+        try:
+            self.icon_p2 = pygame.image.load(
+                "assets/images/icon_p2.png"
+            ).convert_alpha()
+
+            self.icon_p2 = pygame.transform.smoothscale(
+                self.icon_p2,
+                (28, 28)
+            )
+        except:
+            self.icon_p2 = None
+            
+        self.round_end_time = 0
 
     def handle_events(self, events):
         # Lấy kích thước màn hình thật tại thời điểm hiện tại
         screen_w, screen_h = self.screen.get_size()
         cx = screen_w // 2
         
-        # Tính toán đẩy bàn cờ sang 2 bên
-        board_y = max(180, int(screen_h * 0.18))
-        margin_x1 = max(30, (cx - config.BOARD_SIZE) // 2)
-        margin_x2 = cx + max(30, (cx - config.BOARD_SIZE) // 2)
+        # --- ĐỒNG BỘ BỐ CỤC ĐỂ HITBOX CHUẨN 100% ---
+        board_y = 160 # Kéo bàn cờ lên cao một chút để nhường chỗ cho nút bấm ở đáy
+        gap = 180     # Khoảng cách giữa 2 bàn giống hệt trên __init__
+        margin_x1 = cx - (gap // 2) - config.BOARD_SIZE
+        margin_x2 = cx + (gap // 2)
 
-        # Cập nhật lại tọa độ hitbox cho 5 nút nằm chuẩn ở đáy màn hình
-        btn_w, btn_h, spacing = 130, 80, 30
+        # Cập nhật tọa độ hitbox 5 nút theo kích thước mới
+        btn_w, btn_h, spacing = 110, 50, 30
         total_w = (btn_w * 5) + (spacing * 4)
         start_x = (screen_w - total_w) // 2
-        btn_y = screen_h - btn_h - 20
+        btn_y = screen_h - btn_h - 50 # Bám sát đáy màn hình
+        
         for i, btn in enumerate(self.buttons):
             btn["rect"].x = start_x + i * (btn_w + spacing)
             btn["rect"].y = btn_y
@@ -125,9 +151,17 @@ class MultiPlayerScreen:
                         if btn["id"] == "exit": return "MENU"
                         elif btn["id"] == "restart": self.manager.init_new_round()
                         elif btn["id"] == "pause": self.is_paused = not self.is_paused
-                        elif btn["id"] == "hint1": self.manager.trigger_hint(1)
-                        elif btn["id"] == "hint2": self.manager.trigger_hint(2)
-
+                        
+                        # --- FIX: CHỈ CHO PHÉP CLICK GỢI Ý NẾU LÀ NGƯỜI CHƠI ---
+                        elif btn["id"] == "hint1":
+                            # P1 là người nếu không phải chế độ Máy vs Máy
+                            if self.manager.mode not in ["AIvAI", "EvE", "CvC"]: 
+                                self.manager.trigger_hint(1)
+                                
+                        elif btn["id"] == "hint2":
+                            # P2 chỉ là người nếu là chế độ PvP
+                            if self.manager.mode == "PvP": 
+                                self.manager.trigger_hint(2)
                 if not self.is_paused and self.manager.round_winner == 0:
                     # Bàn 1
                     if margin_x1 <= vx <= margin_x1 + config.BOARD_SIZE and board_y <= vy <= board_y + config.BOARD_SIZE:
@@ -142,21 +176,58 @@ class MultiPlayerScreen:
 
             # Phím P1
             if event.type == pygame.KEYDOWN and not self.is_paused and self.manager.round_winner == 0:
+                
+                # 1. ĐIỀU KHIỂN BÀN 1 (P1) - Bằng phím W, A, S, D
                 if self.manager.gm1.is_playing:
                     er, ec = self.manager.gm1.board.get_empty_pos()
                     tr, tc = er, ec
-                    if event.key in (pygame.K_w, pygame.K_UP): tr -= 1
-                    elif event.key in (pygame.K_s, pygame.K_DOWN): tr += 1
-                    elif event.key in (pygame.K_a, pygame.K_LEFT): tc -= 1
-                    elif event.key in (pygame.K_d, pygame.K_RIGHT): tc += 1
+                    if event.key == pygame.K_w: tr -= 1
+                    elif event.key == pygame.K_s: tr += 1
+                    elif event.key == pygame.K_a: tc -= 1
+                    elif event.key == pygame.K_d: tc += 1
+                    
                     if (tr, tc) != (er, ec):
-                        if self.manager.gm1.process_move(tr, tc) and self.move_sound: self.move_sound.play()
-        return "PLAYING"
+                        if self.manager.gm1.process_move(tr, tc):
+                            if self.move_sound: self.move_sound.play()
+                            self.manager._check_win_condition() # Kích hoạt check thắng luôn
+
+                # 2. ĐIỀU KHIỂN BÀN 2 (P2) - Bằng phím Mũi Tên (Chỉ dành cho chế độ PvP)
+                if self.manager.gm2.is_playing and self.manager.mode == "PvP":
+                    er, ec = self.manager.gm2.board.get_empty_pos()
+                    tr, tc = er, ec
+                    if event.key == pygame.K_UP: tr -= 1
+                    elif event.key == pygame.K_DOWN: tr += 1
+                    elif event.key == pygame.K_LEFT: tc -= 1
+                    elif event.key == pygame.K_RIGHT: tc += 1
+                    
+                    if (tr, tc) != (er, ec):
+                        if self.manager.gm2.process_move(tr, tc):
+                            if self.move_sound: self.move_sound.play()
+                            self.manager._check_win_condition() # Kích hoạt check thắng luôn
+                        
+        if self.manager.round_winner != 0:
+            if self.round_end_time == 0:
+                self.round_end_time = pygame.time.get_ticks() 
+            elif pygame.time.get_ticks() - self.round_end_time > 2000: # Đợi 2 giây
+                if getattr(self.manager, 'done', False):
+                    # Trả về tín hiệu WIN_MULTI cho game_app.py xử lý
+                    return "WIN_MULTI", {
+                        "winner": self.manager.match_winner,
+                        "score1": self.manager.score_p1,
+                        "score2": self.manager.score_p2
+                    }
+                else:
+                    # Bắt đầu hiệp mới
+                    self.manager.init_new_round()
+                    self.round_end_time = 0 # Reset đồng hồ
+
+        return "PLAYING_MULTI"
 
     def update(self):
         if not self.is_paused and not getattr(self.manager, 'done', False):
-            self.manager.update_time()
-            self.manager.update_ai()
+            if self.manager.round_winner == 0:
+                self.manager.update_time()
+                self.manager.update_ai()
 
     def _draw_vietnamese_wood_panel(self, surface, rect, is_board=False):
         """
@@ -308,63 +379,40 @@ class MultiPlayerScreen:
 
     def _draw_scoreboard(self, surface, x, y, width, height, score1, score2):
         """
-        Bảng tỉ số mang cảm giác văn hoá Việt:
-        - khung gỗ nâu đỏ
-        - viền vàng son
-        - lõi màu giấy lụa / sơn son
+        Scoreboard pastel mang vibe Việt:
+        - pastel mềm
+        - hoa văn sen / mây
+        - viền vàng champagne
         """
         rect = pygame.Rect(x, y, width, height)
 
-        # ===== MÀU CHỦ ĐẠO =====
-        wood_dark = (92, 38, 22)         # gỗ trầm
-        wood_mid = (120, 58, 35)         # gỗ nâu đỏ
-        gold = (210, 170, 70)            # vàng son
-        gold_light = (235, 205, 120)     # vàng sáng
-        silk_red = (155, 48, 45)         # đỏ gấm
-        silk_blue = (58, 85, 125)        # xanh lam trầm
-        text_gold = (255, 235, 180)
+        # ===== palette pastel =====
+        outer = (248, 240, 225)       # kem ngà
+        border = (215, 190, 145)      # vàng champagne
+        left_fill = (255, 225, 230)   # hồng pastel
+        right_fill = (220, 235, 250)  # xanh pastel
+        text_left = (180, 90, 110)
+        text_right = (90, 120, 180)
+        pattern = (235, 210, 180)
 
-        # ===== 1. KHUNG NGOÀI =====
+        # ===== 1. khung ngoài =====
         pygame.draw.rect(
             surface,
-            gold,
+            outer,
             rect,
             border_radius=18
         )
 
-        # ===== 2. THÂN GỖ =====
-        wood_rect = rect.inflate(-4, -4)
         pygame.draw.rect(
             surface,
-            wood_dark,
-            wood_rect,
-            border_radius=16
+            border,
+            rect,
+            border_radius=18,
+            width=2
         )
 
-        # ===== 3. VÂN GỖ =====
-        grain = pygame.Surface(
-            (wood_rect.width, wood_rect.height),
-            pygame.SRCALPHA
-        )
-
-        rng = random.Random(999)
-
-        for _ in range(20):
-            gx = rng.randint(0, wood_rect.width)
-            gy = rng.randint(0, wood_rect.height)
-
-            pygame.draw.line(
-                grain,
-                (145, 75, 45, 70),
-                (gx, gy),
-                (gx + rng.randint(-5, 5), gy + rng.randint(15, 40)),
-                2
-            )
-
-        surface.blit(grain, wood_rect.topleft)
-
-        # ===== 4. LÕI TRONG =====
-        inner = wood_rect.inflate(-12, -12)
+        # ===== 2. phần lõi =====
+        inner = rect.inflate(-10, -10)
 
         left_rect = pygame.Rect(
             inner.x,
@@ -382,51 +430,78 @@ class MultiPlayerScreen:
 
         pygame.draw.rect(
             surface,
-            silk_red,
+            left_fill,
             left_rect,
-            border_top_left_radius=10,
-            border_bottom_left_radius=10
+            border_top_left_radius=12,
+            border_bottom_left_radius=12
         )
 
         pygame.draw.rect(
             surface,
-            silk_blue,
+            right_fill,
             right_rect,
-            border_top_right_radius=10,
-            border_bottom_right_radius=10
+            border_top_right_radius=12,
+            border_bottom_right_radius=12
         )
 
-        # ===== 5. VẠCH CHIA TRUNG TÂM =====
+        # ===== 3. vạch chia =====
         pygame.draw.line(
             surface,
-            gold_light,
+            border,
             (inner.centerx, inner.y + 6),
             (inner.centerx, inner.bottom - 6),
-            3
+            2
         )
 
-        # ===== 6. HỌA TIẾT TRANG TRÍ =====
+        # ===== 4. hoa văn mây / sen mini =====
+        # bên trái
+       # ===== DRAW ICON =====
+        icon_size = 28
+
+        p1_icon_rect = pygame.Rect(
+            left_rect.x + 18,
+            left_rect.centery - icon_size // 2,
+            icon_size,
+            icon_size
+        )
+
+        p2_icon_rect = pygame.Rect(
+            right_rect.right - 18 - icon_size,
+            right_rect.centery - icon_size // 2,
+            icon_size,
+            icon_size
+        )
+
+        if self.icon_p1:
+            surface.blit(self.icon_p1, p1_icon_rect.topleft)
+        else:
+            pygame.draw.rect(surface, (255, 245, 245), p1_icon_rect, border_radius=8)
+            pygame.draw.rect(surface, border, p1_icon_rect, width=1, border_radius=8)
+
+        if self.icon_p2:
+            surface.blit(self.icon_p2, p2_icon_rect.topleft)
+        else:
+            pygame.draw.rect(surface, (245, 248, 255), p2_icon_rect, border_radius=8)
+            pygame.draw.rect(surface, border, p2_icon_rect, width=1, border_radius=8)
+
+        # ===== 5. huy hiệu giữa =====
         pygame.draw.circle(
             surface,
-            gold_light,
+            border,
             (inner.centerx, inner.centery),
-            6
+            8
         )
 
-        # ===== 7. TEXT =====
-        score_font = self.font_title
-
-        txt1 = score_font.render(
-            f"P1  {score1}",
-            True,
-            text_gold
+        pygame.draw.circle(
+            surface,
+            (255, 250, 245),
+            (inner.centerx, inner.centery),
+            4
         )
 
-        txt2 = score_font.render(
-            f"P2  {score2}",
-            True,
-            text_gold
-        )
+        # ===== 6. text =====
+        txt1 = self.font_title.render(f"P1: {score1}", True, text_left)
+        txt2 = self.font_title.render(f"P2: {score2}", True, text_right)
 
         surface.blit(txt1, txt1.get_rect(center=left_rect.center))
         surface.blit(txt2, txt2.get_rect(center=right_rect.center))
@@ -468,30 +543,23 @@ class MultiPlayerScreen:
 
         cx = self.base_w // 2
 
-        pygame.draw.line(
-            self.v_surf,
-            (200, 180, 160),
-            (cx, 110),
-            (cx, self.base_h - 130),
-            3
-        )
-
         score_w = min(450, int(self.base_w * 0.4))
         self._draw_scoreboard(
             self.v_surf,
             cx - score_w // 2,
-            25,
+            20,
             score_w,
             75,
             self.manager.score_p1,
             self.manager.score_p2
         )
 
-        board_y = 180
-        stats_y = board_y + config.BOARD_SIZE + 30
+        board_y = 160 
+        stats_y = board_y + config.BOARD_SIZE + 20
 
-        margin_x1 = 40
-        margin_x2 = self.base_w - config.BOARD_SIZE - 40
+        gap = 180
+        margin_x1 = cx - (gap // 2) - config.BOARD_SIZE
+        margin_x2 = cx + (gap // 2)
 
         prog1 = self.manager.get_progress(1)
         prog2 = self.manager.get_progress(2)
@@ -599,35 +667,53 @@ class MultiPlayerScreen:
 
         # ===== preview =====
         if self.review_image:
-            preview_rect = pygame.Rect(cx - 75, 115, 150, 150)
-            frame_rect = preview_rect.inflate(20, 20)
+            preview_size = 150 # SỬA Ở ĐÂY: Giờ gap đã rộng, phóng to ảnh lên 150!
+
+            preview_rect = pygame.Rect(
+                cx - preview_size // 2,
+                105, # Tọa độ Y này kết hợp với size 150 sẽ thò xuống khe giữa 2 bàn cờ rất đẹp
+                preview_size,
+                preview_size
+            )
+
+            frame_rect = preview_rect.inflate(18, 18)
 
             self._draw_dark_wood_frame(self.v_surf, frame_rect)
-            self.v_surf.blit(self.review_image, preview_rect.topleft)
+
+            scaled_preview = pygame.transform.smoothscale(
+                self.review_image,
+                (preview_size, preview_size)
+            )
+
+            self.v_surf.blit(scaled_preview, preview_rect.topleft)
 
         # ===== restore config =====
         config.MARGIN_LEFT, config.MARGIN_TOP = old_mx, old_my
 
         # ===== 2. SCALE TO SCREEN =====
-        scale = min(
-            screen_w / self.base_w,
-            screen_h / self.base_h
-        )
-
-        final_w = int(self.base_w * scale)
-        final_h = int(self.base_h * scale)
-
+        # ===== FULL SCREEN SCALE =====
         scaled_ui = pygame.transform.smoothscale(
             self.v_surf,
-            (final_w, final_h)
+            (screen_w, screen_h)
         )
 
-        self.screen.fill((30, 25, 20))
-
-        self.screen.blit(
-            scaled_ui,
-            (
-                (screen_w - final_w) // 2,
-                (screen_h - final_h) // 2
-            )
-        )
+        self.screen.blit(scaled_ui, (0, 0))
+        for btn in self.buttons:
+            img = self.btn_images.get(btn["id"])
+            if img:
+                img_copy = img.copy()
+                
+                # Kiểm tra xem có phải là nút Gợi ý của AI không
+                is_p1_ai = self.manager.mode in ["AIvAI", "EvE", "CvC"]
+                is_p2_ai = self.manager.mode != "PvP"
+                
+                if (btn["id"] == "hint1" and is_p1_ai) or (btn["id"] == "hint2" and is_p2_ai):
+                    # Phủ màu xám mờ để báo hiệu nút bị vô hiệu hóa
+                    img_copy.fill((100, 100, 100), special_flags=pygame.BLEND_RGB_MULT)
+                elif btn["id"] == "pause" and self.is_paused:
+                    # Phủ đỏ nhạt nếu đang Tạm dừng
+                    img_copy.fill((255, 180, 180), special_flags=pygame.BLEND_RGB_MULT)
+                    
+                self.screen.blit(img_copy, btn["rect"].topleft)
+            else:
+                self._draw_fallback_button(self.screen, btn["rect"], btn["text"])

@@ -6,7 +6,7 @@ from src.core.player import PlayerSlot, PlayerType
 from src.core.settings_manager import SettingsManager
 from src.ui.renderer import Renderer
 from src.ui.components import PillButton
-from src.ai.bot import AIBot  
+from src.ai.bot import AIBot
 
 class DualPlayerScreen:
     """Màn hình chế độ 2 người chơi (split-screen)."""
@@ -53,18 +53,18 @@ class DualPlayerScreen:
 
         # --- KHỞI TẠO 2 BOT ---
         self.bots = {
-            1: AIBot(size=self.size, difficulty=diff_p1), 
-            2: AIBot(size=self.size, difficulty=diff_p2)  
+            1: AIBot(size=self.size, difficulty=diff_p1),
+            2: AIBot(size=self.size, difficulty=diff_p2)
         }
-        
+
         # Bật AI mặc định nếu là BOT
         self.ai_active = {
             1: self.is_p1_bot,
             2: self.is_p2_bot
         }
-        
-        self.last_bot_move = {1: 0, 2: 0}     
-        self.bot_speed = 300                  
+
+        self.last_bot_move = {1: 0, 2: 0}
+        self.bot_speed = 300
 
         self.renderer = Renderer(screen)
 
@@ -88,7 +88,7 @@ class DualPlayerScreen:
 
         self._stat_box_h = 70
         self._stat_box_y = self._board_y + B + 14
-        self._B = B 
+        self._B = B
 
         self.is_winning    = False
         self.win_start_time = 0
@@ -130,8 +130,8 @@ class DualPlayerScreen:
 
         btn_h    = 42
         btn_y    = H - 65
-        bw_act   = int(W * 0.08)   
-        bw_ctr   = int(W * 0.09)   
+        bw_act   = int(W * 0.08)
+        bw_ctr   = int(W * 0.09)
         pad      = int(W * 0.01)
 
         def _pb(rect, text, c_top, c_bot, c_shad):
@@ -190,9 +190,9 @@ class DualPlayerScreen:
         for event in events:
             if self.btn_quit.handle_event(event):     return "MENU"
             if self.btn_pause.handle_event(event):    self.gm.is_paused = not self.gm.is_paused
-            
+
             # --- CẬP NHẬT TRẬN MỚI: Tự động chạy lại AI cho các BOT ---
-            if self.btn_new_game.handle_event(event): 
+            if self.btn_new_game.handle_event(event):
                 self.gm.new_game()
                 self.ai_active[1] = self.is_p1_bot
                 self.ai_active[2] = self.is_p2_bot
@@ -200,12 +200,12 @@ class DualPlayerScreen:
 
             if self.btn_p1_undo.handle_event(event) and not self.gm.is_paused:
                 if self.gm.undo(1):
-                    self.bots[1].clear_memory() 
+                    self.bots[1].clear_memory()
                     if self.move_sound: self.move_sound.play()
-                    
+
             if self.btn_p2_undo.handle_event(event) and not self.gm.is_paused:
                 if self.gm.undo(2):
-                    self.bots[2].clear_memory() 
+                    self.bots[2].clear_memory()
                     if self.move_sound: self.move_sound.play()
 
             # --- NÚT BẬT/TẮT AI (Khóa lại nếu đã là BOT từ đầu) ---
@@ -222,12 +222,12 @@ class DualPlayerScreen:
             #  KHÓA BÀN PHÍM NẾU AI ĐANG CHẠY ---
             if event.type == pygame.KEYDOWN and not self.gm.is_paused:
                 moved = False
-                
+
                 if event.key in self.P1_KEYS and not self.ai_active[1]:
                     dr, dc = self.P1_KEYS[event.key]
                     er, ec = self.board1.get_empty_pos()
                     moved = self.gm.process_move(1, er + dr, ec + dc)
-                    
+
                 elif event.key in self.P2_KEYS and not self.ai_active[2]:
                     dr, dc = self.P2_KEYS[event.key]
                     er, ec = self.board2.get_empty_pos()
@@ -238,7 +238,7 @@ class DualPlayerScreen:
                     if self.gm.get_winner() is not None:
                         self.is_winning = True
                         self.win_start_time = pygame.time.get_ticks()
-                        self.ai_active = {1: False, 2: False} 
+                        self.ai_active = {1: False, 2: False}
                         if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
                         if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
 
@@ -257,20 +257,20 @@ class DualPlayerScreen:
                     if current_time - self.last_bot_move[p_id] >= self.bot_speed:
                         board = self.board1 if p_id == 1 else self.board2
                         empty_r, empty_c = board.get_empty_pos()
-                        
+
                         dx, dy = self.bots[p_id].get_next_move(board.matrix, empty_r, empty_c)
-                        
+
                         if (dx, dy) != (0, 0):
                             target_r, target_c = empty_r + dx, empty_c + dy
-                            
+
                             if self.gm.process_move(p_id, target_r, target_c):
                                 if self.move_sound: self.move_sound.play()
-                                self.last_bot_move[p_id] = current_time 
+                                self.last_bot_move[p_id] = current_time
 
                                 if self.gm.get_winner() is not None:
                                     self.is_winning = True
                                     self.win_start_time = pygame.time.get_ticks()
-                                    self.ai_active = {1: False, 2: False} 
+                                    self.ai_active = {1: False, 2: False}
                                     if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
                                     if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
 
@@ -306,8 +306,8 @@ class DualPlayerScreen:
 
     def render(self):
         screen_w = self.screen.get_width()
-        cx_top   = screen_w // 2                    
-        W        = config.DUAL_WINDOW_WIDTH          
+        cx_top   = screen_w // 2
+        W        = config.DUAL_WINDOW_WIDTH
 
         if self.bg_img:
             self.screen.blit(self.bg_img, (0, 0))

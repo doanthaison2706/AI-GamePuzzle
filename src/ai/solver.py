@@ -36,7 +36,7 @@ class PuzzleSolver:
                         val_j = board[curr_j]
                         if val_j != 0 and (val_j - 1) // size == row:
                             if val_i > val_j:
-                                linear_conflict += 2 
+                                linear_conflict += 2
 
         # 3. Tính Linear Conflict (Cột dọc)
         for col in range(size):
@@ -58,13 +58,13 @@ class PuzzleSolver:
         neighbors = []
         zero_idx = board.index(0)
         curr_x, curr_y = zero_idx // self.size, zero_idx % self.size
-        
+
         # Các hướng di chuyển của Ô TRỐNG
         moves = {
             "UP": (-1, 0), "DOWN": (1, 0),
             "LEFT": (0, -1), "RIGHT": (0, 1)
         }
-        
+
         for move_name, (dx, dy) in moves.items():
             next_x, next_y = curr_x + dx, curr_y + dy
             if 0 <= next_x < self.size and 0 <= next_y < self.size:
@@ -72,7 +72,7 @@ class PuzzleSolver:
                 new_board = list(board)
                 new_board[zero_idx], new_board[next_idx] = new_board[next_idx], new_board[zero_idx]
                 neighbors.append((tuple(new_board), move_name))
-                
+
         random.shuffle(neighbors) # <
         return neighbors
 
@@ -83,7 +83,7 @@ class PuzzleSolver:
         """
         # Chuyển 2D thành 1D Tuple để xử lý siêu tốc
         start_board = tuple(val for row in start_matrix for val in row)
-        
+
         if start_board == self.target:
             return []
 
@@ -94,13 +94,13 @@ class PuzzleSolver:
         elif self.size >= 5: weight = 10.0
 
         h_start = self.get_manhattan_and_linear_conflict(start_board)
-        
+
         # Dùng counter để giải quyết lỗi so sánh Tuple khi 2 trạng thái có cùng điểm F
-        counter = itertools.count() 
-        
+        counter = itertools.count()
+
         # Hàng đợi: (Điểm F, Điểm H, Điểm G, ID đếm, Trạng thái, Lịch sử nước đi)
         queue = [(h_start * weight, h_start, 0, next(counter), start_board, [])]
-        
+
         # Chỉ lưu trạng thái đã đi qua bằng Set (Tốc độ O(1) và cực kỳ tiết kiệm RAM)
         visited = set()
         visited.add(start_board)
@@ -109,7 +109,7 @@ class PuzzleSolver:
             f, h, g, _, current, path = heapq.heappop(queue)
 
             if current == self.target:
-                return path 
+                return path
 
             # Giới hạn độ sâu để chống treo máy (Safety net)
             # Nếu tính toán vượt quá 5000 vòng lặp, chốt luôn nước đi Greedy tốt nhất để thoát hiểm
@@ -124,7 +124,7 @@ class PuzzleSolver:
                     new_g = g + 1
                     new_h = self.get_manhattan_and_linear_conflict(next_board)
                     new_f = new_g + (new_h * weight) # Áp dụng phép thuật Weighted A*
-                    
+
                     heapq.heappush(queue, (new_f, new_h, new_g, next(counter), next_board, path + [move_name]))
-        
+
         return []

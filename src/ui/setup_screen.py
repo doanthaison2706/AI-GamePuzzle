@@ -18,7 +18,7 @@ from src.utils.image_crop import open_file_dialog
 from src.ui.crop_menu import CropImageMenu
 from configs import game_config as config
 
-_PREVIEW = 180   
+_PREVIEW = 180
 _SIZES = {3: "3x3", 4: "4x4", 5: "5x5", 6: "6x6"}
 _DIFFS = {"easy": "DỄ", "medium": "VỪA", "hard": "KHÓ"}
 
@@ -31,16 +31,16 @@ class SetupSingleScreen:
         self._font_h1   = pygame.font.SysFont("Georgia", 30, bold=True)
         self._font_h2   = pygame.font.SysFont("Georgia", 18)
         self._font_btn  = pygame.font.SysFont("Georgia", 17, bold=True)
-        self._font_tiny = pygame.font.SysFont("Georgia", 13, bold=True) 
+        self._font_tiny = pygame.font.SysFont("Georgia", 13, bold=True)
         self._font_val  = pygame.font.SysFont("Georgia", 24, bold=True)
 
         self.is_multi       = start_as_multi
-        self.selected_size  = 4        
-        self.selected_time  = 0        
-        self.selected_score = 3        
+        self.selected_size  = 4
+        self.selected_time  = 0
+        self.selected_score = 3
 
         self.p_type         = {1: "HUMAN", 2: "HUMAN"}
-        self.ai_diff        = {1: "medium", 2: "medium"} 
+        self.ai_diff        = {1: "medium", 2: "medium"}
 
         self._image_mode = {1: "DEFAULT", 2: "DEFAULT"}
         self._full_image = {1: None,      2: None}
@@ -57,9 +57,9 @@ class SetupSingleScreen:
         dim = lambda c: tuple(max(0, v - 20) for v in c)
 
         col_type_y = 280
-        diff_y     = 322  
-        col_btn_y  = 360  
-        col_def_y  = 402  
+        diff_y     = 322
+        col_btn_y  = 360
+        col_def_y  = 402
         col_btn_h  = 36
 
         self._btn_p1_type_multi  = _mk((p1x_multi,  col_type_y, _PREVIEW, col_btn_h), "👤 HUMAN", (60, 140, 200), (80, 160, 220))
@@ -67,12 +67,12 @@ class SetupSingleScreen:
 
         def _make_diff_btns(p_cx):
             btns = {}
-            bw = 56 
+            bw = 56
             bx = p_cx - _PREVIEW//2
             for i, (k, lbl) in enumerate(_DIFFS.items()):
                 btns[k] = RoundedButton((bx + i*(bw+6), diff_y, bw, 30), lbl, self._font_tiny, color=(55, 55, 100), hover_color=(75, 75, 140))
             return btns
-            
+
         self._p1_diff_btns_multi = _make_diff_btns(W//4)
         self._p2_diff_btns       = _make_diff_btns(3*W//4)
 
@@ -84,13 +84,13 @@ class SetupSingleScreen:
         self._prev_rect_multi  = {1: pygame.Rect(p1x_multi,  90, _PREVIEW, _PREVIEW), 2: pygame.Rect(p2x_multi,  90, _PREVIEW, _PREVIEW)}
 
         p2_prev_cx = 3*W//4
-        p2_prev_cy = 90 + _PREVIEW // 2   
+        p2_prev_cy = 90 + _PREVIEW // 2
         self._btn_p2_add = RoundedButton((p2_prev_cx - 36, p2_prev_cy - 36, 72, 72), "+", pygame.font.SysFont("Georgia", 36, bold=True), color=(45, 130, 55), hover_color=(65, 160, 75))
         self._btn_p2_remove = RoundedButton((p2_prev_cx + _PREVIEW//2 - 22, 68, 28, 28), "−", pygame.font.SysFont("Georgia", 20, bold=True), color=(160, 50, 50), hover_color=(200, 70, 70))
 
-        sy = 480 
-        sly = 550 
-        tmy = 620 
+        sy = 480
+        sly = 550
+        tmy = 620
 
         self._size_btns: dict[int, RoundedButton] = {}
         sizes = list(_SIZES.keys())
@@ -125,7 +125,7 @@ class SetupSingleScreen:
             # --- DÙNG DUY NHẤT CỘT TRÁI (MULTI) CHO PLAYER 1 ĐỂ KHÔNG BỊ LỖI ---
             if self._btn_p1_type_multi.handle_event(event):
                 self.p_type[1] = "BOT" if self.p_type[1] == "HUMAN" else "HUMAN"
-                
+
             if self._btn_p1_pick_multi.handle_event(event): self._pick(1)
             if self._btn_p1_default_multi.handle_event(event): self._use_default(1)
 
@@ -141,7 +141,7 @@ class SetupSingleScreen:
             if self.p_type[1] == "BOT":
                 for k, btn in self._p1_diff_btns_multi.items():
                     if btn.handle_event(event): self.ai_diff[1] = k
-                    
+
             if self.is_multi and self.p_type[2] == "BOT":
                 for k, btn in self._p2_diff_btns.items():
                     if btn.handle_event(event): self.ai_diff[2] = k
@@ -160,13 +160,13 @@ class SetupSingleScreen:
                     "time":          self._timer_secs if self._timer_enabled else 0,
                     "score":         self.selected_score,
                     "multiplayer":   self.is_multi,
-                    "image":         self._full_image[1],   
-                    "image_p2":      self._full_image[2], 
+                    "image":         self._full_image[1],
+                    "image_p2":      self._full_image[2],
                     "p1_type":       self.p_type[1],
                     "p2_type":       self.p_type[2] if self.is_multi else "HUMAN",
-                    "p1_diff":       self.ai_diff[1],   
+                    "p1_diff":       self.ai_diff[1],
                     "p2_diff":       self.ai_diff[2],
-                    "difficulty":    self.ai_diff[1]    
+                    "difficulty":    self.ai_diff[1]
                 }
                 return "PLAYING", data
 

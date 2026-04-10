@@ -6,11 +6,11 @@ class AIBot:
         self.size = size
         self.difficulty = difficulty.lower()
         self.ai_type = "SEARCH"
-        
+
         self.moves_map_search = {"UP": (-1, 0), "DOWN": (1, 0), "LEFT": (0, -1), "RIGHT": (0, 1)}
         self.solver = PuzzleSolver(size)
-        self.path_cache = [] 
-        
+        self.path_cache = []
+
         # Cấu hình "Nhân tính" theo độ khó
         self.config = {
             "easy":   {"mistake_rate": 0.30, "forget_rate": 0.40},
@@ -26,7 +26,7 @@ class AIBot:
         """Bật thuật toán tìm kiếm có Nhân tính"""
         board_1d = tuple(val for row in matrix for val in row)
         settings = self.config.get(self.difficulty, self.config["hard"])
-        
+
         # 1. Tật "Bấm nhầm": Có tỉ lệ đi bừa 1 bước
         if random.random() < settings["mistake_rate"]:
             neighbors = self.solver.get_neighbors(board_1d)
@@ -47,7 +47,7 @@ class AIBot:
         if self.path_cache:
             best_move = self.path_cache.pop(0)
             return self.moves_map_search.get(best_move, (0, 0))
-            
+
         return (0, 0) # Fallback an toàn
 
     def clear_memory(self):

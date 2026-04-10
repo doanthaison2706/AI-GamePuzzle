@@ -25,23 +25,23 @@ class SinglePlayerScreen:
         self.player = self.gm.players[0]
         self.board = self.gm.board
         self.show_full_image = False
-        
+
         # --- LẤY DỮ LIỆU TỪ SETUP ---
         p1_type = setup_data.get("p1_type", "HUMAN")
         difficulty = setup_data.get("difficulty", "hard")
-        
+
         self.is_bot = (p1_type == "BOT") # Lưu cờ xác nhận là BOT từ đầu
 
         # --- KHỞI TẠO AI ---
         self.bot = AIBot(size=self.size, difficulty=difficulty)
         self.is_ai_playing = self.is_bot # Nếu là BOT thì tự bật True luôn
-        self.last_bot_move_time = 0       
+        self.last_bot_move_time = 0
         self.bot_speed = 300
 
         self.best_score = 35
         self.is_paused = False
-        self.is_winning = False   
-        self.win_start_time = 0   
+        self.is_winning = False
+        self.win_start_time = 0
 
         try:
             self.move_sound = pygame.mixer.Sound("assets/sounds/move.wav")
@@ -123,18 +123,18 @@ class SinglePlayerScreen:
             if not self.is_bot and self.btn_ai.handle_event(event):
                 self.is_ai_playing = not self.is_ai_playing
                 if self.is_ai_playing:
-                    self.bot.clear_memory() 
+                    self.bot.clear_memory()
                 self.btn_ai.text = "DỪNG AI" if self.is_ai_playing else "AI GIẢI"
 
             if self.btn_undo.handle_event(event):
                 if self.gm.undo():
-                    self.bot.clear_memory() 
+                    self.bot.clear_memory()
                     if self.move_sound: self.move_sound.play()
-            
-            if self.btn_hint.handle_event(event): pass  
-            
+
+            if self.btn_hint.handle_event(event): pass
+
             # --- CHƠI LẠI: Tự động chạy AI nếu là BOT ---
-            if self.btn_replay.handle_event(event): 
+            if self.btn_replay.handle_event(event):
                 self.gm.new_game()
                 self.is_winning = False
                 self.is_ai_playing = self.is_bot
@@ -146,17 +146,17 @@ class SinglePlayerScreen:
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
                 self.is_winning = True
-                self.win_start_time = pygame.time.get_ticks() 
-                self.show_full_image = True 
-                self.gm.is_playing = False  
-                self.is_ai_playing = False 
+                self.win_start_time = pygame.time.get_ticks()
+                self.show_full_image = True
+                self.gm.is_playing = False
+                self.is_ai_playing = False
                 if not self.is_bot:
                     self.btn_ai.text = "AI GIẢI"
-                continue 
+                continue
 
             if self.gm.is_playing and not self.show_full_image and not self.is_paused and not self.is_ai_playing:
                 move_success = False
-                
+
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     mx, my = event.pos
                     if config.MARGIN_LEFT <= mx <= config.MARGIN_LEFT + config.BOARD_SIZE and \
@@ -189,24 +189,24 @@ class SinglePlayerScreen:
 
         if self.is_ai_playing and self.gm.is_playing and not self.is_paused and not self.is_winning:
             current_time = pygame.time.get_ticks()
-            
+
             if current_time - self.last_bot_move_time >= self.bot_speed:
-                empty_r, empty_c = self.board.get_empty_pos() 
-                
+                empty_r, empty_c = self.board.get_empty_pos()
+
                 dx, dy = self.bot.get_next_move(self.board.matrix, empty_r, empty_c)
-                
+
                 if (dx, dy) != (0, 0):
                     target_r, target_c = empty_r + dx, empty_c + dy
-                    
+
                     if self.gm.process_move(target_r, target_c):
                         if self.move_sound: self.move_sound.play()
-                        self.last_bot_move_time = current_time 
+                        self.last_bot_move_time = current_time
 
                         if not self.gm.is_playing:
                             self.is_winning = True
                             self.win_start_time = pygame.time.get_ticks()
                             self.show_full_image = True
-                            self.is_ai_playing = False 
+                            self.is_ai_playing = False
                             if not self.is_bot:
                                 self.btn_ai.text = "AI GIẢI"
 
@@ -255,7 +255,7 @@ class SinglePlayerScreen:
         color_text_blue = (50, 100, 150)
         color_text_red = (200, 80, 100)
 
-        self.draw_top_stat_pill(80, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue) 
+        self.draw_top_stat_pill(80, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue)
         self.draw_top_stat_pill(240, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
         self.draw_top_stat_pill(400, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
         self.draw_top_stat_pill(580, stat_y, 140, f"KỶ LỤC: {self.best_score}", color_text_red, color_text_red, is_record=True)

@@ -6,7 +6,7 @@ from src.core.player import PlayerSlot, PlayerType
 from src.core.settings_manager import SettingsManager
 from src.ui.renderer import Renderer
 from src.ui.components import PillButton
-
+from src.ai.bot import AIBot  
 
 class DualPlayerScreen:
     """Màn hình chế độ 2 người chơi (split-screen)."""
@@ -28,12 +28,21 @@ class DualPlayerScreen:
         self.screen = screen
         self.size = setup_data.get("size", 3)
 
-        # Removed hardcoded set_mode, now relying on game_app's SettingsManager display
         pygame.display.set_caption("N-Puzzle Arena — Đối Kháng")
 
+        # --- XÁC ĐỊNH LOẠI NGƯỜI CHƠI ---
+        p1_type_enum = PlayerType.BOT if setup_data.get("p1_type") == "BOT" else PlayerType.HUMAN
+        p2_type_enum = PlayerType.BOT if setup_data.get("p2_type") == "BOT" else PlayerType.HUMAN
+        diff_p1 = setup_data.get("p1_diff", "hard")
+        diff_p2 = setup_data.get("p2_diff", "hard")
+
+        # Lưu lại cờ xem ai là BOT "cứng" từ đầu
+        self.is_p1_bot = (p1_type_enum == PlayerType.BOT)
+        self.is_p2_bot = (p2_type_enum == PlayerType.BOT)
+
         # --- GAME MANAGER ---
-        p1 = PlayerSlot(player_id=1, player_type=PlayerType.HUMAN)
-        p2 = PlayerSlot(player_id=2, player_type=PlayerType.HUMAN)
+        p1 = PlayerSlot(player_id=1, player_type=p1_type_enum)
+        p2 = PlayerSlot(player_id=2, player_type=p2_type_enum)
         self.gm = DualGameManager(size=self.size, p1=p1, p2=p2)
         self.gm.new_game()
 
@@ -42,15 +51,26 @@ class DualPlayerScreen:
         self.board1 = self.gm.board1
         self.board2 = self.gm.board2
 
+        # --- KHỞI TẠO 2 BOT ---
+        self.bots = {
+            1: AIBot(size=self.size, difficulty=diff_p1), 
+            2: AIBot(size=self.size, difficulty=diff_p2)  
+        }
+        
+        # Bật AI mặc định nếu là BOT
+        self.ai_active = {
+            1: self.is_p1_bot,
+            2: self.is_p2_bot
+        }
+        
+        self.last_bot_move = {1: 0, 2: 0}     
+        self.bot_speed = 300                  
+
         self.renderer = Renderer(screen)
 
-        # -------------------------------------------------------
-        # Tính vị trí board động, ưu tiên responsive không đè nút
-        # -------------------------------------------------------
         W = config.DUAL_WINDOW_WIDTH
         H = config.WINDOW_HEIGHT
 
-        # Tính chiều cao còn lại cho board (trừ top margin, stat box, padding và button row)
         available_b_h = H - int(H * 0.15) - 170
         available_b_w = int(W * 0.42)
         B = min(available_b_h, available_b_w)
@@ -62,16 +82,13 @@ class DualPlayerScreen:
         self._p2_board_x = self._p1_board_x + B + GAP
         self._board_y    = int(H * 0.15)
 
-        # offset dùng khi gọi renderer.draw_board
         self._p1_offset_x = self._p1_board_x - config.MARGIN_LEFT
         self._p2_offset_x = self._p2_board_x - config.MARGIN_LEFT
         self._board_top   = self._board_y - config.MARGIN_TOP
 
-        # Thông số stat box dưới board
         self._stat_box_h = 70
         self._stat_box_y = self._board_y + B + 14
-        self._B = B # lưu lại để render player stats
-
+        self._B = B 
 
         self.is_winning    = False
         self.win_start_time = 0
@@ -98,7 +115,6 @@ class DualPlayerScreen:
             self.font_btn   = pygame.font.SysFont("arial", 14, bold=True)
             self.font_small = pygame.font.SysFont("arial", 15, bold=True)
 
-        # Background
         try:
             self.bg_img = pygame.image.load("assets/images/bg_play.png").convert()
             self.bg_img = pygame.transform.scale(self.bg_img, (W, H))
@@ -107,52 +123,55 @@ class DualPlayerScreen:
 
         self._init_buttons()
 
-    # ------------------------------------------------------------------
     def _init_buttons(self):
-        """
-        Layout (trái → phải):
-        [Undo P1] [AI P1]  …  [New Game] [Tạm Dừng] [Thoát]  …  [AI P2] [Undo P2]
-        """
         H   = config.WINDOW_HEIGHT
         W   = config.DUAL_WINDOW_WIDTH
         cx  = W // 2
 
         btn_h    = 42
         btn_y    = H - 65
-        bw_act   = int(W * 0.08)   # Undo / AI linh động theo % chiều rộng
-        bw_ctr   = int(W * 0.09)   # Center buttons
+        bw_act   = int(W * 0.08)   
+        bw_ctr   = int(W * 0.09)   
         pad      = int(W * 0.01)
 
         def _pb(rect, text, c_top, c_bot, c_shad):
             return PillButton(rect, text, self.font_btn,
                               color_top=c_top, color_bot=c_bot, shadow_color=c_shad)
 
-        # Nút trung tâm (3 nút)
         total_ctr = bw_ctr * 3 + pad * 2
         start_ctr = cx - total_ctr // 2
         self.btn_new_game = _pb((start_ctr, btn_y, bw_ctr, btn_h),
                                 "TRẬN MỚI", (160,230,150), (120,200,110), (90,160,80))
         self.btn_pause    = _pb((start_ctr + bw_ctr + pad, btn_y, bw_ctr, btn_h),
-                                "TẠM DỮNG", (255,230,150), (230,200,100), (200,170,70))
+                                "TẠM DỪNG", (255,230,150), (230,200,100), (200,170,70))
         self.btn_quit     = _pb((start_ctr + (bw_ctr + pad) * 2, btn_y, bw_ctr, btn_h),
                                 "THOÁT", (255,160,160), (230,120,120), (200,90,90))
 
-        # Nhóm P1: [Undo] [AI] (Căn giữa dưới board P1)
         p1_cx = self._p1_board_x + self._B // 2
         self.btn_p1_undo = _pb((p1_cx - pad // 2 - bw_act, btn_y, bw_act, btn_h),
                                "HOÀN TÁC", (200,210,255), (150,170,255), (120,140,220))
         self.btn_p1_ai   = _pb((p1_cx + pad // 2, btn_y, bw_act, btn_h),
                                "AI GIẢI", (190,240,255), (135,215,245), (110,190,220))
 
-        # Nhóm P2: [AI] [Undo] (Căn giữa dưới board P2)
         p2_cx = self._p2_board_x + self._B // 2
         self.btn_p2_ai   = _pb((p2_cx - pad // 2 - bw_act, btn_y, bw_act, btn_h),
                                "AI GIẢI", (190,240,255), (135,215,245), (110,190,220))
         self.btn_p2_undo = _pb((p2_cx + pad // 2, btn_y, bw_act, btn_h),
                                "HOÀN TÁC", (200,210,255), (150,170,255), (120,140,220))
 
+        # --- LÀM MỜ NÚT AI NẾU ĐÃ CHỌN LÀ BOT TỪ SETUP ---
+        if self.is_p1_bot:
+            self.btn_p1_ai.text = "🤖 TỰ ĐỘNG"
+            self.btn_p1_ai.color_top = (180, 180, 180)
+            self.btn_p1_ai.color_bot = (140, 140, 140)
+            self.btn_p1_ai.shadow_color = (100, 100, 100)
 
-    # ------------------------------------------------------------------
+        if self.is_p2_bot:
+            self.btn_p2_ai.text = "🤖 TỰ ĐỘNG"
+            self.btn_p2_ai.color_top = (180, 180, 180)
+            self.btn_p2_ai.color_bot = (140, 140, 140)
+            self.btn_p2_ai.shadow_color = (100, 100, 100)
+
     def handle_events(self, events):
         if self.is_winning:
             if pygame.time.get_ticks() - self.win_start_time >= 1500:
@@ -170,20 +189,46 @@ class DualPlayerScreen:
 
         for event in events:
             if self.btn_quit.handle_event(event):     return "MENU"
-            if self.btn_new_game.handle_event(event): self.gm.new_game()
             if self.btn_pause.handle_event(event):    self.gm.is_paused = not self.gm.is_paused
-            if self.btn_p1_undo.handle_event(event) and not self.gm.is_paused:
-                if self.gm.undo(1) and self.move_sound: self.move_sound.play()
-            if self.btn_p2_undo.handle_event(event) and not self.gm.is_paused:
-                if self.gm.undo(2) and self.move_sound: self.move_sound.play()
+            
+            # --- CẬP NHẬT TRẬN MỚI: Tự động chạy lại AI cho các BOT ---
+            if self.btn_new_game.handle_event(event): 
+                self.gm.new_game()
+                self.ai_active[1] = self.is_p1_bot
+                self.ai_active[2] = self.is_p2_bot
+                self.is_winning = False
 
+            if self.btn_p1_undo.handle_event(event) and not self.gm.is_paused:
+                if self.gm.undo(1):
+                    self.bots[1].clear_memory() 
+                    if self.move_sound: self.move_sound.play()
+                    
+            if self.btn_p2_undo.handle_event(event) and not self.gm.is_paused:
+                if self.gm.undo(2):
+                    self.bots[2].clear_memory() 
+                    if self.move_sound: self.move_sound.play()
+
+            # --- NÚT BẬT/TẮT AI (Khóa lại nếu đã là BOT từ đầu) ---
+            if not self.is_p1_bot and self.btn_p1_ai.handle_event(event) and not self.gm.is_paused:
+                self.ai_active[1] = not self.ai_active[1]
+                if self.ai_active[1]: self.bots[1].clear_memory()
+                self.btn_p1_ai.text = "DỪNG AI" if self.ai_active[1] else "AI GIẢI"
+
+            if not self.is_p2_bot and self.btn_p2_ai.handle_event(event) and not self.gm.is_paused:
+                self.ai_active[2] = not self.ai_active[2]
+                if self.ai_active[2]: self.bots[2].clear_memory()
+                self.btn_p2_ai.text = "DỪNG AI" if self.ai_active[2] else "AI GIẢI"
+
+            #  KHÓA BÀN PHÍM NẾU AI ĐANG CHẠY ---
             if event.type == pygame.KEYDOWN and not self.gm.is_paused:
                 moved = False
-                if event.key in self.P1_KEYS:
+                
+                if event.key in self.P1_KEYS and not self.ai_active[1]:
                     dr, dc = self.P1_KEYS[event.key]
                     er, ec = self.board1.get_empty_pos()
                     moved = self.gm.process_move(1, er + dr, ec + dc)
-                elif event.key in self.P2_KEYS:
+                    
+                elif event.key in self.P2_KEYS and not self.ai_active[2]:
                     dr, dc = self.P2_KEYS[event.key]
                     er, ec = self.board2.get_empty_pos()
                     moved = self.gm.process_move(2, er + dr, ec + dc)
@@ -193,20 +238,43 @@ class DualPlayerScreen:
                     if self.gm.get_winner() is not None:
                         self.is_winning = True
                         self.win_start_time = pygame.time.get_ticks()
+                        self.ai_active = {1: False, 2: False} 
+                        if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
+                        if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
 
         return "PLAYING_DUAL"
 
-    # ------------------------------------------------------------------
     def update(self, dt: float = 0.0):
         if not self.gm.is_paused:
             self.gm.update_time(dt)
 
-    # ------------------------------------------------------------------
-    # Render helpers
-    # ------------------------------------------------------------------
+        # --- LOGIC 2 BOT CHẠY ĐUA ---
+        if self.gm.is_playing and not self.gm.is_paused and not self.is_winning:
+            current_time = pygame.time.get_ticks()
+
+            for p_id in [1, 2]:
+                if self.ai_active[p_id]:
+                    if current_time - self.last_bot_move[p_id] >= self.bot_speed:
+                        board = self.board1 if p_id == 1 else self.board2
+                        empty_r, empty_c = board.get_empty_pos()
+                        
+                        dx, dy = self.bots[p_id].get_next_move(board.matrix, empty_r, empty_c)
+                        
+                        if (dx, dy) != (0, 0):
+                            target_r, target_c = empty_r + dx, empty_c + dy
+                            
+                            if self.gm.process_move(p_id, target_r, target_c):
+                                if self.move_sound: self.move_sound.play()
+                                self.last_bot_move[p_id] = current_time 
+
+                                if self.gm.get_winner() is not None:
+                                    self.is_winning = True
+                                    self.win_start_time = pygame.time.get_ticks()
+                                    self.ai_active = {1: False, 2: False} 
+                                    if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
+                                    if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
 
     def _draw_info_pill(self, rect, label, value, lbl_color, val_color):
-        """Vẽ pill thông tin: nhãn nhỏ phía trên + giá trị lớn bên dưới."""
         pygame.draw.rect(self.screen, (235, 245, 255), rect, border_radius=12)
         pygame.draw.rect(self.screen, (200, 220, 255), rect, border_radius=12, width=2)
         lbl_s = self.font_small.render(label, True, lbl_color)
@@ -215,10 +283,7 @@ class DualPlayerScreen:
         self.screen.blit(val_s, val_s.get_rect(centerx=rect.centerx, bottom=rect.bottom - 7))
 
     def _draw_stat_box(self, player: PlayerSlot, board_x: int):
-        """Vẽ hộp thống kê dưới mỗi board (khớp wireframe)."""
         box = pygame.Rect(board_x, self._stat_box_y, self._B, self._stat_box_h)
-
-        # Nền hộp
         pygame.draw.rect(self.screen, (255, 252, 245), box, border_radius=12)
         pygame.draw.rect(self.screen, (230, 210, 200), box, border_radius=12, width=2)
 
@@ -239,25 +304,19 @@ class DualPlayerScreen:
         self.screen.blit(line1, (text_x, box.y + 10))
         self.screen.blit(line2, (text_x, box.y + 36))
 
-    # ------------------------------------------------------------------
     def render(self):
-        # Chỉ cx dùng screen.get_size() cho phần TOP (title, pills thông tin)
-        # → phần còn lại dùng tọa độ cố định tính từ DUAL_WINDOW_WIDTH
         screen_w = self.screen.get_width()
-        cx_top   = screen_w // 2                    # chỉ dùng cho top section
-        W        = config.DUAL_WINDOW_WIDTH          # cố định cho boards/buttons
+        cx_top   = screen_w // 2                    
+        W        = config.DUAL_WINDOW_WIDTH          
 
-        # ---- Nền ----
         if self.bg_img:
             self.screen.blit(self.bg_img, (0, 0))
         else:
             self.screen.fill((255, 246, 233))
 
-        # ---- Tiêu đề (căn giữa theo cửa sổ thực) ----
         title = self.font_title.render("ĐỐI KHÁNG", True, (50, 100, 150))
         self.screen.blit(title, title.get_rect(centerx=cx_top, top=12))
 
-        # ---- 3 pill thông tin chung (căn giữa theo cửa sổ thực) ----
         pill_h = 50
         pill_w = 170
         pill_y = 52
@@ -271,13 +330,11 @@ class DualPlayerScreen:
         self._draw_info_pill(rect_score, "Tỉ số",        self.gm.get_score_text(),     (180, 80, 80),   (200, 80, 100))
         self._draw_info_pill(rect_level, "Cấp độ",       f"{self.size}×{self.size}",   (100, 120, 100), (60, 120, 80))
 
-        # ---- Nhãn P1 / P2 (vị trí cố định) ----
         p1_lbl = self.font_stat.render("NGƯỜI CHƠI 1  (WASD)", True, (80, 160, 120))
         p2_lbl = self.font_stat.render("NGƯỜI CHƠI 2  (↑↓←→)", True, (200, 100, 80))
         self.screen.blit(p1_lbl, (self._p1_board_x, self._board_y - 30))
         self.screen.blit(p2_lbl, (self._p2_board_x, self._board_y - 30))
 
-        # ---- 2 board (vị trí cố định) ----
         self.renderer.draw_board(
             self.board1.matrix, self.size,
             offset_x=self._p1_offset_x, offset_y=self._board_top,
@@ -289,11 +346,9 @@ class DualPlayerScreen:
             board_size=self._B
         )
 
-        # ---- Stat box mỗi player (vị trí cố định) ----
         self._draw_stat_box(self.p1, self._p1_board_x)
         self._draw_stat_box(self.p2, self._p2_board_x)
 
-        # ---- Nút (vị trí cố định) ----
         mouse = pygame.mouse.get_pos()
         self.btn_pause.text = "TIẾP TỤC" if self.gm.is_paused else "TẠM DỪNG"
         self.btn_new_game.draw(self.screen, mouse)
@@ -304,7 +359,6 @@ class DualPlayerScreen:
         self.btn_p2_ai.draw(self.screen, mouse)
         self.btn_p2_undo.draw(self.screen, mouse)
 
-        # ---- Overlay thắng ----
         if self.is_winning:
             winner = self.gm.get_winner()
             overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)

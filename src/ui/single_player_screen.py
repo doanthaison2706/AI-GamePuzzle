@@ -5,6 +5,7 @@ from src.core.single_game_manager import SingleGameManager
 from src.ui.renderer import Renderer
 from src.utils.image_crop import slice_image
 from src.ui.components import PillButton
+from src.core.settings_manager import SettingsManager
 
 class SinglePlayerScreen:
     def __init__(self, screen, setup_data):
@@ -34,6 +35,10 @@ class SinglePlayerScreen:
 
         try:
             self.move_sound = pygame.mixer.Sound("assets/sounds/move.wav")
+            mgr = SettingsManager()
+            vol = mgr.get("move_volume")
+            if vol is not None:
+                self.move_sound.set_volume(vol / 100.0)
         except:
             self.move_sound = None
 

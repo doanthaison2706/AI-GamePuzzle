@@ -8,24 +8,29 @@ class DualGameManager(BaseGameManager):
     """Manages a 2-player competitive game session.
     Uses two Board instances with the same shuffle seed."""
 
-    def __init__(self, size: int, p1: PlayerSlot, p2: PlayerSlot):
+    # FIX 1: Nhận thêm biến score_limit (mặc định là 3)
+    def __init__(self, size: int, p1: PlayerSlot, p2: PlayerSlot, score_limit: int = 3):
         super().__init__(size)
         self.p1 = p1
         self.p2 = p2
+        self.score_limit = score_limit
 
         self.board1 = BoardFactory.create(size)
         self.board2 = BoardFactory.create(size)
 
-        # Scoreboard — persists across rounds
+        # Scoreboard — giữ nguyên tỉ số qua các ván đấu
         self.score = {p1.player_id: 0, p2.player_id: 0}
-        self.winner: PlayerSlot | None = None
+        
+        # Tách biệt: Thắng 1 ván vs Thắng cả trận
+        self.round_winner: PlayerSlot | None = None
+        self.match_winner: PlayerSlot | None = None
 
     @property
     def players(self) -> list[PlayerSlot]:
         return [self.p1, self.p2]
 
     def new_game(self):
-        """Start a new round with identical boards for both players."""
+        """Bắt đầu VÁN MỚI (Next Round). Tỉ số vẫn được giữ nguyên."""
         seed = self.generate_seed()
 
         self.board1.shuffle(seed=seed)
@@ -35,14 +40,24 @@ class DualGameManager(BaseGameManager):
         self.p2.reset_stats()
         self.p1.correct_count = self.board1.count_correct_tiles()
         self.p2.correct_count = self.board2.count_correct_tiles()
+        
         self.is_playing = True
         self.is_paused = False
         self.elapsed_time = 0.0
-        self.winner = None
+        
+        # Chỉ reset trạng thái của ván đấu
+        self.round_winner = None
+
+    def reset_match(self):
+        """Nếu muốn làm lại toàn bộ trận đấu (Tỉ số về 0-0)"""
+        self.score = {self.p1.player_id: 0, self.p2.player_id: 0}
+        self.match_winner = None
+        self.new_game()
 
     def process_move(self, player_id: int, r: int, c: int) -> bool:
-        """Process a move for the given player. Returns True if valid move."""
-        if not self.is_playing or self.winner is not None or self.is_paused:
+        """Xử lý nước đi."""
+        # Chặn đánh nếu ván hoặc trận đã kết thúc
+        if not self.is_playing or self.round_winner is not None or self.is_paused:
             return False
 
         board, player = self._get_board_and_player(player_id)
@@ -51,9 +66,15 @@ class DualGameManager(BaseGameManager):
             player.move_count += 1
             player.correct_count = board.count_correct_tiles()
 
+            # Nếu 1 người giải xong bàn cờ
             if board.is_solved():
-                self.winner = player
+                self.round_winner = player
                 self.score[player.player_id] += 1
+                
+                # FIX 2: Kiểm tra xem đã đạt mốc BO3/BO5 chưa
+                if self.score[player.player_id] >= self.score_limit:
+                    self.match_winner = player
+                    
                 self._stop_all()
 
             return True
@@ -61,8 +82,8 @@ class DualGameManager(BaseGameManager):
         return False
 
     def undo(self, player_id: int) -> bool:
-        """Undo a move for the given player. Returns True if successful."""
-        if not self.is_playing or self.winner is not None or self.is_paused:
+        """Undo move."""
+        if not self.is_playing or self.round_winner is not None or self.is_paused:
             return False
 
         board, player = self._get_board_and_player(player_id)
@@ -75,10 +96,14 @@ class DualGameManager(BaseGameManager):
         return False
 
     def get_winner(self) -> PlayerSlot | None:
-        return self.winner
+        """LƯU Ý: Giờ hàm này chỉ trả về kết quả khi CẢ TRẬN đã kết thúc"""
+        return self.match_winner
+        
+    def is_round_over(self) -> bool:
+        return self.round_winner is not None
 
     def is_game_over(self) -> bool:
-        return self.winner is not None
+        return self.match_winner is not None
 
     def get_score_text(self) -> str:
         """Return formatted score, e.g. '2 - 1'."""
@@ -92,6 +117,6 @@ class DualGameManager(BaseGameManager):
         return self.board2, self.p2
 
     def _stop_all(self):
-        """Stop game when a winner is determined."""
+        """Stop game when a round winner is determined."""
         self.update_time()
         self.is_playing = False

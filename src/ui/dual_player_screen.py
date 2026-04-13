@@ -87,7 +87,7 @@ class DualPlayerScreen:
         self._board_top   = self._board_y - config.MARGIN_TOP
 
         self._stat_box_h = 70
-        self._stat_box_y = self._board_y + B + 14
+        self._stat_box_y = self._board_y + B + 35
         self._B = B 
 
         self.is_winning    = False
@@ -120,6 +120,14 @@ class DualPlayerScreen:
             self.bg_img = pygame.transform.scale(self.bg_img, (W, H))
         except Exception:
             self.bg_img = None
+            
+        try:
+            self.wood_frame_img = pygame.image.load("assets/images/wood_frame.png").convert_alpha()
+            # Ở chế độ Dual, bàn cờ là self._B nên khung sẽ là self._B + 40
+            frame_size = self._B + 40
+            self.wood_frame_img = pygame.transform.smoothscale(self.wood_frame_img, (frame_size, frame_size))
+        except Exception:
+            self.wood_frame_img = None
 
         self._init_buttons()
 
@@ -332,8 +340,24 @@ class DualPlayerScreen:
 
         p1_lbl = self.font_stat.render("NGƯỜI CHƠI 1  (WASD)", True, (80, 160, 120))
         p2_lbl = self.font_stat.render("NGƯỜI CHƠI 2  (↑↓←→)", True, (200, 100, 80))
-        self.screen.blit(p1_lbl, (self._p1_board_x, self._board_y - 30))
-        self.screen.blit(p2_lbl, (self._p2_board_x, self._board_y - 30))
+        self.screen.blit(p1_lbl, (self._p1_board_x, self._board_y - 45))
+        self.screen.blit(p2_lbl, (self._p2_board_x, self._board_y - 45))
+        
+        # --- Vẽ khung gỗ cho 2 bàn cờ ---
+        def draw_frame(actual_x, actual_y):
+            # Lùi ra 20px so với tọa độ thật để tạo viền
+            frame_x = actual_x - 20
+            frame_y = actual_y - 20
+            if self.wood_frame_img:
+                self.screen.blit(self.wood_frame_img, (frame_x, frame_y))
+            else:
+                rect = (frame_x, frame_y, self._B + 40, self._B + 40)
+                pygame.draw.rect(self.screen, (220, 180, 140), rect, border_radius=20)
+                pygame.draw.rect(self.screen, (180, 130, 90), rect, border_radius=20, width=4)
+
+        # SỬ DỤNG TỌA ĐỘ THỰC TẾ (board_x, board_y) THAY VÌ OFFSET
+        draw_frame(self._p1_board_x, self._board_y)
+        draw_frame(self._p2_board_x, self._board_y)
 
         self.renderer.draw_board(
             self.board1.matrix, self.size,

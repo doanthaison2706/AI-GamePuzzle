@@ -5,9 +5,8 @@ import random
 class PuzzleSolver:
     def __init__(self, size):
         self.size = size
-        # Trạng thái đích chuẩn: (1, 2, 3, ..., 0)
         self.target = tuple(list(range(1, size * size)) + [0])
-
+        
     def get_manhattan_and_linear_conflict(self, board):
         """
         Siêu Heuristic: Manhattan Distance kết hợp Linear Conflict
@@ -53,13 +52,18 @@ class PuzzleSolver:
 
         return manhattan + linear_conflict
 
-    def get_neighbors(self, board):
-        """Tìm các trạng thái tiếp theo có thể đi từ trạng thái hiện tại"""
+    def get_neighbors(self, board, locked_indices=None):
+        """
+        Đã nâng cấp: Thêm tham số locked_indices.
+        AI sẽ KHÔNG BAO GIỜ tráo đổi ô trống với các vị trí đã bị khóa.
+        """
+        if locked_indices is None:
+            locked_indices = set()
+
         neighbors = []
         zero_idx = board.index(0)
         curr_x, curr_y = zero_idx // self.size, zero_idx % self.size
 
-        # Các hướng di chuyển của Ô TRỐNG
         moves = {
             "UP": (-1, 0), "DOWN": (1, 0),
             "LEFT": (0, -1), "RIGHT": (0, 1)
@@ -69,19 +73,64 @@ class PuzzleSolver:
             next_x, next_y = curr_x + dx, curr_y + dy
             if 0 <= next_x < self.size and 0 <= next_y < self.size:
                 next_idx = next_x * self.size + next_y
+                
+                # CHỐT CHẶN QUAN TRỌNG: Nếu ô định đi tới đang bị khóa -> Bỏ qua
+                if next_idx in locked_indices:
+                    continue
+
                 new_board = list(board)
                 new_board[zero_idx], new_board[next_idx] = new_board[next_idx], new_board[zero_idx]
                 neighbors.append((tuple(new_board), move_name))
 
-        random.shuffle(neighbors) # <
+        random.shuffle(neighbors)
         return neighbors
 
-    def solve_smart_hybrid(self, start_matrix):
+    def solve_single_tile(self, start_board, tile_val, target_idx, locked_indices):
         """
-        Thuật toán Siêu tốc cho bàn cờ lớn (Weighted A*).
-        Đảm bảo phản hồi ngay lập tức cho 4x4, 5x5, 6x6.
+        HÀM MỚI: Chỉ tập trung tìm đường đưa ĐÚNG 1 VIÊN GẠCH (tile_val) về ĐÚNG 1 VỊ TRÍ (target_idx).
+        Bỏ qua điểm số của các viên gạch khác.
         """
-        # Chuyển 2D thành 1D Tuple để xử lý siêu tốc
+        def single_tile_heuristic(board):
+            # Khoảng cách từ viên gạch mục tiêu đến đích
+            tile_curr_idx = board.index(tile_val)
+            t_x, t_y = tile_curr_idx // self.size, tile_curr_idx % self.size
+            dest_x, dest_y = target_idx // self.size, target_idx % self.size
+            dist_tile_to_dest = abs(t_x - dest_x) + abs(t_y - dest_y)
+
+            # Khoảng cách từ ô trống (0) đến viên gạch mục tiêu (để có thể đẩy nó đi)
+            zero_idx = board.index(0)
+            z_x, z_y = zero_idx // self.size, zero_idx % self.size
+            dist_zero_to_tile = abs(z_x - t_x) + abs(z_y - t_y)
+
+            return dist_tile_to_dest * 10 + dist_zero_to_tile
+
+        counter = itertools.count()
+        h_start = single_tile_heuristic(start_board)
+        queue = [(h_start, 0, next(counter), start_board, [])]
+        visited = set()
+        visited.add(start_board)
+
+        while queue:
+            f, g, _, current, path = heapq.heappop(queue)
+
+            # Điểm dừng: Viên gạch đã nằm đúng vị trí đích
+            if current.index(tile_val) == target_idx:
+                return path, current
+
+            # Dùng get_neighbors có hệ thống khóa
+            for next_board, move_name in self.get_neighbors(current, locked_indices):
+                if next_board not in visited:
+                    visited.add(next_board)
+                    new_g = g + 1
+                    new_f = new_g + single_tile_heuristic(next_board)
+                    heapq.heappush(queue, (new_f, new_g, next(counter), next_board, path + [move_name]))
+
+        return [], start_board
+
+    def solve_smart_hybrid(self, start_matrix, locked_indices=None):
+        if locked_indices is None:
+            locked_indices = set()
+            
         start_board = tuple(val for row in start_matrix for val in row)
 
         if start_board == self.target:
@@ -111,14 +160,14 @@ class PuzzleSolver:
             if current == self.target:
                 return path
 
-            # Giới hạn độ sâu để chống treo máy (Safety net)
-            # Nếu tính toán vượt quá 5000 vòng lặp, chốt luôn nước đi Greedy tốt nhất để thoát hiểm
             if next(counter) > 5000:
-                neighbors = self.get_neighbors(current)
+                # Sửa dòng này: truyền locked_indices vào get_neighbors
+                neighbors = self.get_neighbors(current, locked_indices)
                 best_neighbor = min(neighbors, key=lambda x: self.get_manhattan_and_linear_conflict(x[0]))
                 return path + [best_neighbor[1]]
 
-            for next_board, move_name in self.get_neighbors(current):
+            # Sửa dòng này: truyền locked_indices vào get_neighbors
+            for next_board, move_name in self.get_neighbors(current, locked_indices):
                 if next_board not in visited:
                     visited.add(next_board)
                     new_g = g + 1

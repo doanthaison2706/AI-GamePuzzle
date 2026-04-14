@@ -101,10 +101,19 @@ class SinglePlayerScreen:
 
         # --- LÀM MỜ NÚT AI NẾU ĐÃ CHỌN LÀ BOT TỪ SETUP ---
         if self.is_bot:
-            self.btn_ai.text = "🤖 TỰ ĐỘNG"
+            self.btn_ai.text = "TỰ ĐỘNG"
             self.btn_ai.color_top = (180, 180, 180)
             self.btn_ai.color_bot = (140, 140, 140)
             self.btn_ai.shadow_color = (100, 100, 100)
+            # Khóa nút Gợi ý
+            self.btn_hint.color_top = (180, 180, 180)
+            self.btn_hint.color_bot = (140, 140, 140)
+            self.btn_hint.shadow_color = (100, 100, 100)
+
+            # Khóa nút Hoàn tác
+            self.btn_undo.color_top = (180, 180, 180)
+            self.btn_undo.color_bot = (140, 140, 140)
+            self.btn_undo.shadow_color = (100, 100, 100)
 
     def handle_events(self, events):
         if self.is_winning:
@@ -124,28 +133,31 @@ class SinglePlayerScreen:
             elif event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
                 self.show_full_image = False
 
-            # --- NÚT AI GIẢI: Bật/tắt AI (Khóa lại nếu đã là BOT từ đầu) ---
+            # --- NÚT AI GIẢI: Bật/tắt AI  ---
             if not self.is_bot and self.btn_ai.handle_event(event):
                 self.is_ai_playing = not self.is_ai_playing
                 if self.is_ai_playing:
                     self.bot.clear_memory()
                 self.btn_ai.text = "DỪNG AI" if self.is_ai_playing else "AI GIẢI"
 
-            if self.btn_undo.handle_event(event):
-                if self.gm.undo():
-                    self.bot.clear_memory()
-                    if self.move_sound: self.move_sound.play()
+            if not self.is_bot and not self.is_ai_playing:
+                if self.btn_undo.handle_event(event):
+                    if self.gm.undo():
+                        self.bot.clear_memory()
+                        if self.move_sound: self.move_sound.play()
 
-            if self.btn_hint.handle_event(event):
-                if self.gm.is_playing and not self.is_winning and not self.is_paused and not self.is_bot:
-                    empty_r, empty_c = self.board.get_empty_pos()
-                    dx, dy = self.bot.get_next_move(self.board.matrix, empty_r, empty_c)
-                    if (dx, dy) != (0, 0):
-                        tr, tc = empty_r + dx, empty_c + dy
-                        if self.gm.process_move(tr, tc):
-                            if self.move_sound: self.move_sound.play()
-                            if not self.gm.is_playing:
-                                self._on_win()
+            # --- GỢI Ý: Khóa thao tác nếu là chế độ BOT hoặc AI đang tự giải ---
+            if not self.is_bot and not self.is_ai_playing:
+                if self.btn_hint.handle_event(event):
+                    if self.gm.is_playing and not self.is_winning and not self.is_paused:
+                        empty_r, empty_c = self.board.get_empty_pos()
+                        dx, dy = self.bot.get_next_move(self.board.matrix, empty_r, empty_c)
+                        if (dx, dy) != (0, 0):
+                            tr, tc = empty_r + dx, empty_c + dy
+                            if self.gm.process_move(tr, tc):
+                                if self.move_sound: self.move_sound.play()
+                                if not self.gm.is_playing:
+                                    self._on_win()
 
             # --- CHƠI LẠI: Tự động chạy AI nếu là BOT ---
             if self.btn_replay.handle_event(event):

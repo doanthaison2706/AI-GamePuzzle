@@ -60,8 +60,8 @@ class SetupSingleScreen:
 
         btn_w = 220
         # Đẩy nút chọn ảnh xuống (Từ 265 -> 295)
-        self._btn_pick_img = _mk((cx - btn_w - 15, 295, btn_w, 46), "📁 CHỌN ẢNH TỪ MÁY", dim(P1_COLOR), P1_COLOR)
-        self._btn_def_img  = _mk((cx + 15, 295, btn_w, 46), "🖼️ DÙNG MẶC ĐỊNH", BTN_COLOR, BTN_HOVER)
+        self._btn_pick_img = _mk((cx - btn_w - 15, 295, btn_w, 46), "CHỌN ẢNH TỪ MÁY", dim(P1_COLOR), P1_COLOR)
+        self._btn_def_img  = _mk((cx + 15, 295, btn_w, 46), "DÙNG MẶC ĐỊNH", BTN_COLOR, BTN_HOVER)
 
         # --- 2. KHU VỰC THIẾT LẬP NGƯỜI CHƠI (CHIA 2 CỘT) ---
         p1_cx = W // 4
@@ -69,8 +69,8 @@ class SetupSingleScreen:
         # Đẩy khu vực người chơi xuống (Từ 360 -> 400)
         p_row_y = 400
 
-        self._btn_p1_type = _mk((p1_cx - 80, p_row_y + 35, 160, 42), "👤 HUMAN", (60, 140, 200), (80, 160, 220))
-        self._btn_p2_type = _mk((p2_cx - 80, p_row_y + 35, 160, 42), "👤 HUMAN", (60, 140, 200), (80, 160, 220))
+        self._btn_p1_type = _mk((p1_cx - 80, p_row_y + 35, 160, 42), "HUMAN", (60, 140, 200), (80, 160, 220))
+        self._btn_p2_type = _mk((p2_cx - 80, p_row_y + 35, 160, 42), "HUMAN", (60, 140, 200), (80, 160, 220))
 
         def _make_diff_btns(center_x, y_pos):
             btns = {}
@@ -85,7 +85,7 @@ class SetupSingleScreen:
         self._p2_diff_btns = _make_diff_btns(p2_cx, p_row_y + 85)
 
         self._btn_p2_add = RoundedButton((p2_cx - 40, p_row_y + 20, 80, 80), "+", pygame.font.SysFont("Georgia", 40, bold=True), color=(45, 130, 55), hover_color=(65, 160, 75))
-        self._btn_p2_remove = RoundedButton((p2_cx + 105, p_row_y - 18, 36, 36), "−", pygame.font.SysFont("Georgia", 24, bold=True), color=(200, 60, 60), hover_color=(230, 80, 80))
+        self._btn_p2_remove = RoundedButton((p2_cx + 105, p_row_y - 18, 36, 36), "-", pygame.font.SysFont("Georgia", 24, bold=True), color=(200, 60, 60), hover_color=(230, 80, 80))
 
         # --- 3. KHU VỰC LUẬT CHƠI (CĂN GIỮA BÊN DƯỚI) ---
         # Đẩy 3 block luật chơi xuống đều nhau
@@ -101,7 +101,7 @@ class SetupSingleScreen:
         self._size_label_y = sy
 
         self._score_label_y = sly
-        self._score_dec = RoundedButton((cx - 80, sly + 30, 46, 42), "−", self._font_val)
+        self._score_dec = RoundedButton((cx - 80, sly + 30, 46, 42), "-", self._font_val)
         self._score_inc = RoundedButton((cx + 34, sly + 30, 46, 42), "+", self._font_val)
         self._score_val_y = sly + 50
 
@@ -109,7 +109,7 @@ class SetupSingleScreen:
         self._timer_toggle  = RoundedButton((cx - 140, tmy + 30, 80, 42), "", self._font_btn)
         self._timer_enabled = False
         self._timer_secs    = 180
-        self._timer_dec = RoundedButton((cx - 40, tmy + 30, 46, 42), "−", self._font_val)
+        self._timer_dec = RoundedButton((cx - 40, tmy + 30, 46, 42), "-", self._font_val)
         self._timer_inc = RoundedButton((cx + 94, tmy + 30, 46, 42), "+", self._font_val)
         self._tdur_val_x = cx + 46
         self._tdur_val_y = tmy + 50
@@ -246,7 +246,7 @@ class SetupSingleScreen:
         self.screen.blit(lbl, lbl.get_rect(center=(col_cx, y_pos)))
 
         ptype = self.p_type[player]
-        btn_type.text = "🤖 BOT" if ptype == "BOT" else "👤 HUMAN"
+        btn_type.text = "BOT" if ptype == "BOT" else "HUMAN"
         btn_type.color = (200, 80, 100) if ptype == "BOT" else (60, 140, 200)
         btn_type.hover_color = tuple(min(c+20, 255) for c in btn_type.color)
         btn_type.draw(self.screen, mouse)

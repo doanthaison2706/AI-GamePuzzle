@@ -1,7 +1,7 @@
 import time
 from .base_game_manager import BaseGameManager
 from .board_factory import BoardFactory
-from .player import PlayerSlot
+from .player import PlayerSlot, PlayerType
 
 
 class DualGameManager(BaseGameManager):
@@ -87,6 +87,10 @@ class DualGameManager(BaseGameManager):
             return False
 
         board, player = self._get_board_and_player(player_id)
+
+        # CHỐT CHẶN BẢO MẬT: Chỉ HUMAN mới được phép undo
+        if player.player_type != PlayerType.HUMAN:
+            return False
 
         if board.undo():
             player.move_count = max(0, player.move_count - 1)

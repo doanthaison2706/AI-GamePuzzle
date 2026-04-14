@@ -36,13 +36,13 @@ class OptionsScreen:
 
         # ── Center Column (Sound) ────────────────────────────────────────────────
         # Music Volume
-        self._vol_dec = RoundedButton((cx - 90, 260, self.btn_w, self.btn_h), "−", self._font_val,
+        self._vol_dec = RoundedButton((cx - 90, 260, self.btn_w, self.btn_h), "-", self._font_val,
                                       color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)
         self._vol_inc = RoundedButton((cx + 44, 260, self.btn_w, self.btn_h), "+", self._font_val,
                                       color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)
 
         # Move Sound Volume
-        self._move_dec = RoundedButton((cx - 90, 420, self.btn_w, self.btn_h), "−", self._font_val,
+        self._move_dec = RoundedButton((cx - 90, 420, self.btn_w, self.btn_h), "-", self._font_val,
                                        color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)
         self._move_inc = RoundedButton((cx + 44, 420, self.btn_w, self.btn_h), "+", self._font_val,
                                        color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)

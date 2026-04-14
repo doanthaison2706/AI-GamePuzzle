@@ -42,6 +42,9 @@ class SingleGameManager(BaseGameManager):
         return False
 
     def undo(self) -> bool:
+        if self.player.player_type != PlayerType.HUMAN:
+            return False
+
         if getattr(self, 'winner', None) is not None or not self.is_playing or self.is_paused:
             return False
 

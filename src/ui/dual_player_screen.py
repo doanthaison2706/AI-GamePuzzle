@@ -174,16 +174,26 @@ class DualPlayerScreen:
 
         # --- LÀM MỜ NÚT AI NẾU ĐÃ CHỌN LÀ BOT TỪ SETUP ---
         if self.is_p1_bot:
-            self.btn_p1_ai.text = "🤖 TỰ ĐỘNG"
+            self.btn_p1_ai.text = "TỰ ĐỘNG"
             self.btn_p1_ai.color_top = (180, 180, 180)
             self.btn_p1_ai.color_bot = (140, 140, 140)
             self.btn_p1_ai.shadow_color = (100, 100, 100)
 
+            # Thêm làm mờ nút Undo P1
+            self.btn_p1_undo.color_top = (180, 180, 180)
+            self.btn_p1_undo.color_bot = (140, 140, 140)
+            self.btn_p1_undo.shadow_color = (100, 100, 100)
+
         if self.is_p2_bot:
-            self.btn_p2_ai.text = "🤖 TỰ ĐỘNG"
+            self.btn_p2_ai.text = "TỰ ĐỘNG"
             self.btn_p2_ai.color_top = (180, 180, 180)
             self.btn_p2_ai.color_bot = (140, 140, 140)
             self.btn_p2_ai.shadow_color = (100, 100, 100)
+
+            # Thêm làm mờ nút Undo P2
+            self.btn_p2_undo.color_top = (180, 180, 180)
+            self.btn_p2_undo.color_bot = (140, 140, 140)
+            self.btn_p2_undo.shadow_color = (100, 100, 100)
 
     def handle_events(self, events):
         for event in events:
@@ -216,15 +226,19 @@ class DualPlayerScreen:
                 self.ai_active[1] = self.is_p1_bot
                 self.ai_active[2] = self.is_p2_bot
 
-            if self.btn_p1_undo.handle_event(event) and not self.gm.is_paused:
-                if self.gm.undo(1):
-                    self.bots[1].clear_memory()
-                    if self.move_sound: self.move_sound.play()
+            # --- HOÀN TÁC P1: Khóa nếu là BOT từ đầu hoặc AI đang giải thay ---
+            if not self.is_p1_bot and not self.ai_active[1]:
+                if self.btn_p1_undo.handle_event(event) and not self.gm.is_paused:
+                    if self.gm.undo(1):
+                        self.bots[1].clear_memory()
+                        if self.move_sound: self.move_sound.play()
 
-            if self.btn_p2_undo.handle_event(event) and not self.gm.is_paused:
-                if self.gm.undo(2):
-                    self.bots[2].clear_memory()
-                    if self.move_sound: self.move_sound.play()
+            # --- HOÀN TÁC P2: Khóa nếu là BOT từ đầu hoặc AI đang giải thay ---
+            if not self.is_p2_bot and not self.ai_active[2]:
+                if self.btn_p2_undo.handle_event(event) and not self.gm.is_paused:
+                    if self.gm.undo(2):
+                        self.bots[2].clear_memory()
+                        if self.move_sound: self.move_sound.play()
 
             # --- NÚT BẬT/TẮT AI (Khóa lại nếu đã là BOT từ đầu) ---
             if not self.is_p1_bot and self.btn_p1_ai.handle_event(event) and not self.gm.is_paused:

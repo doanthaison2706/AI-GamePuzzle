@@ -50,7 +50,7 @@ class WinSingleScreen:
             color_top=(255, 210, 130), color_bot=(255, 175, 85), shadow_color=(220, 140, 60),
         )
         self.btn_setup = PillButton(
-            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "CHỌ N MÀN", self.font_btn,
+            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "CHỌN MÀN", self.font_btn,
             color_top=(150, 220, 255), color_bot=(100, 190, 240), shadow_color=(80, 160, 210),
         )
         self.btn_menu = PillButton(

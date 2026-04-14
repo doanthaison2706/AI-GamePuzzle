@@ -46,15 +46,15 @@ class WinSingleScreen:
         btn_y = config.WINDOW_HEIGHT - 100
 
         self.btn_replay = PillButton(
-            (start_x, btn_y, btn_w, btn_h), "TRẬN MỚI", self.font_btn,
+            (start_x, btn_y, btn_w, btn_h), "NEW GAME", self.font_btn,
             color_top=(255, 210, 130), color_bot=(255, 175, 85), shadow_color=(220, 140, 60),
         )
         self.btn_setup = PillButton(
-            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "CHỌN MÀN", self.font_btn,
+            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "SETUP", self.font_btn,
             color_top=(150, 220, 255), color_bot=(100, 190, 240), shadow_color=(80, 160, 210),
         )
         self.btn_menu = PillButton(
-            (start_x + (btn_w + spacing) * 2, btn_y, btn_w, btn_h), "THOÁT", self.font_btn,
+            (start_x + (btn_w + spacing) * 2, btn_y, btn_w, btn_h), "QUIT", self.font_btn,
             color_top=(220, 180, 255), color_bot=(190, 140, 240), shadow_color=(160, 110, 210),
         )
 
@@ -93,8 +93,8 @@ class WinSingleScreen:
         if self.title_banner and self.is_solved:
             self.screen.blit(self.title_banner, (center_x - self.title_banner.get_width()//2, 40))
         else:
-            title_text = "CHÚC MỪNG!" if self.is_solved else "RẤT TIẾC!"
-            sub_text = "BẠN ĐÃ HOÀN THÀNH BÀN CỜ!" if self.is_solved else "BẠN CHƯA GIẢI ĐƯỢC BÀN CỜ NÀY!"
+            title_text = "CONGRATULATIONS!" if self.is_solved else "GAME OVER!"
+            sub_text = "PUZZLE SOLVED!" if self.is_solved else "TIME IS UP!"
             title_color = (240, 100, 120) if self.is_solved else (100, 120, 240)
             sub_color = (80, 160, 140) if self.is_solved else (160, 80, 80)
 
@@ -116,9 +116,9 @@ class WinSingleScreen:
 
         # 3 Ô con bên trong Panel
         box_spacing = 150
-        self.draw_stat_box(center_x - box_spacing, panel_rect.y + 20, "THỜI GIAN", self.time_str)
-        self.draw_stat_box(center_x, panel_rect.y + 20, "DI CHUYỂN", self.moves)
-        self.draw_stat_box(center_x + box_spacing, panel_rect.y + 20, "CẤP ĐỘ", f"{self.size}x{self.size}")
+        self.draw_stat_box(center_x - box_spacing, panel_rect.y + 20, "TIME", self.time_str)
+        self.draw_stat_box(center_x, panel_rect.y + 20, "MOVES", self.moves)
+        self.draw_stat_box(center_x + box_spacing, panel_rect.y + 20, "LEVEL", f"{self.size}x{self.size}")
 
         # 3. 3 NÚT BẤM DƯỚI ĐÁY
         mouse = pygame.mouse.get_pos()

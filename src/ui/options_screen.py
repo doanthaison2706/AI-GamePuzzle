@@ -49,7 +49,7 @@ class OptionsScreen:
 
         # ── Bottom (Control) ────────────────────────────────────────────────
         self._btn_back = RoundedButton(
-            (cx - 200, H - 120, 180, 52), "◀  B A C K", self._font_btn,
+            (cx - 200, H - 120, 180, 52), "B A C K", self._font_btn,
             color=(max(0, P2_COLOR[0]-30), max(0, P2_COLOR[1]-30), max(0, P2_COLOR[2]-30)),
             hover_color=P2_COLOR
         )

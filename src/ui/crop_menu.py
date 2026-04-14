@@ -11,7 +11,7 @@ class CropImageMenu:
         try:
             self.original_img = pygame.image.load(image_path).convert_alpha()
         except Exception as e:
-            print("Lỗi load ảnh:", e)
+            print("Error loading image:", e)
 
         if self.original_img:
             self._setup_ui()
@@ -114,8 +114,8 @@ class CropImageMenu:
         pygame.draw.rect(self.screen, (255, 230, 235), (0, 0, self.screen_w, 80))
         pygame.draw.line(self.screen, (248, 186, 186), (0, 80), (self.screen_w, 80), 3)
 
-        title_surf = self.font_title.render("CẮT ẢNH CHO BÀN CỜ", True, (205, 92, 92))
-        sub_surf = self.font_btn.render("Kéo thả vùng sáng để chọn mảnh ghép vuông", True, (150, 100, 100))
+        title_surf = self.font_title.render("CROP PUZZLE IMAGE", True, (205, 92, 92))
+        sub_surf = self.font_btn.render("Drag the highlighted area to select a square", True, (150, 100, 100))
         self.screen.blit(title_surf, (self.screen_w // 2 - title_surf.get_width() // 2, 10))
         self.screen.blit(sub_surf, (self.screen_w // 2 - sub_surf.get_width() // 2, 45))
 
@@ -147,12 +147,12 @@ class CropImageMenu:
         # Nút bấm Hủy & Xác nhận
         pygame.draw.rect(self.screen, (220, 200, 200), (self.btn_cancel_rect.x, self.btn_cancel_rect.y + 4, 160, 55), border_radius=25)
         pygame.draw.rect(self.screen, (245, 230, 230), self.btn_cancel_rect, border_radius=25)
-        cancel_txt = self.font_btn.render("HỦY", True, (150, 100, 100))
+        cancel_txt = self.font_btn.render("CANCEL", True, (150, 100, 100))
         self.screen.blit(cancel_txt, cancel_txt.get_rect(center=self.btn_cancel_rect.center))
 
         pygame.draw.rect(self.screen, (110, 200, 165), (self.btn_confirm_rect.x, self.btn_confirm_rect.y + 4, 160, 55), border_radius=25)
         pygame.draw.rect(self.screen, (132, 220, 187), self.btn_confirm_rect, border_radius=25)
-        confirm_txt = self.font_btn.render("XÁC NHẬN", True, (255, 255, 255))
+        confirm_txt = self.font_btn.render("CONFIRM", True, (255, 255, 255))
         self.screen.blit(confirm_txt, confirm_txt.get_rect(center=self.btn_confirm_rect.center))
 
         pygame.display.flip()

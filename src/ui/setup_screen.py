@@ -20,7 +20,7 @@ from configs import game_config as config
 
 _PREVIEW = 180
 _SIZES = {3: "3x3", 4: "4x4", 5: "5x5", 6: "6x6"}
-_DIFFS = {"easy": "DỄ", "medium": "VỪA", "hard": "KHÓ"}
+_DIFFS = {"easy": "EASY", "medium": "MEDIUM", "hard": "HARD"}
 
 class SetupSingleScreen:
     def __init__(self, screen: pygame.Surface, start_as_multi: bool = False):
@@ -60,8 +60,8 @@ class SetupSingleScreen:
 
         btn_w = 220
         # Đẩy nút chọn ảnh xuống (Từ 265 -> 295)
-        self._btn_pick_img = _mk((cx - btn_w - 15, 295, btn_w, 46), "CHỌN ẢNH TỪ MÁY", dim(P1_COLOR), P1_COLOR)
-        self._btn_def_img  = _mk((cx + 15, 295, btn_w, 46), "DÙNG MẶC ĐỊNH", BTN_COLOR, BTN_HOVER)
+        self._btn_pick_img = _mk((cx - btn_w - 15, 295, btn_w, 46), "PICK IMAGE", dim(P1_COLOR), P1_COLOR)
+        self._btn_def_img  = _mk((cx + 15, 295, btn_w, 46), "USE DEFAULT", BTN_COLOR, BTN_HOVER)
 
         # --- 2. KHU VỰC THIẾT LẬP NGƯỜI CHƠI (CHIA 2 CỘT) ---
         p1_cx = W // 4
@@ -114,8 +114,8 @@ class SetupSingleScreen:
         self._tdur_val_x = cx + 46
         self._tdur_val_y = tmy + 50
 
-        self._btn_back = RoundedButton((20, H - 76, 160, 52), "◀  B A C K", self._font_btn, color=(max(0, P2_COLOR[0]-30), max(0, P2_COLOR[1]-30), max(0, P2_COLOR[2]-30)), hover_color=P2_COLOR)
-        self._btn_start = RoundedButton((cx - 120, H - 76, 240, 52), "▶  S T A R T", self._font_btn, color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE)
+        self._btn_back = RoundedButton((20, H - 76, 160, 52), "BACK", self._font_btn, color=(max(0, P2_COLOR[0]-30), max(0, P2_COLOR[1]-30), max(0, P2_COLOR[2]-30)), hover_color=P2_COLOR)
+        self._btn_start = RoundedButton((cx - 120, H - 76, 240, 52), "START", self._font_btn, color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE)
 
     def handle_events(self, events):
         for event in events:
@@ -147,8 +147,10 @@ class SetupSingleScreen:
                 if btn.handle_event(event): self.selected_size = n
 
             if self.is_multi:
-                if self._score_dec.handle_event(event): self.selected_score = max(1, self.selected_score - 1)
-                if self._score_inc.handle_event(event): self.selected_score = min(10, self.selected_score + 1)
+                # Trừ 2 đơn vị, thấp nhất là 1
+                if self._score_dec.handle_event(event): self.selected_score = max(1, self.selected_score - 2)
+                # Cộng 2 đơn vị, cao nhất là 5
+                if self._score_inc.handle_event(event): self.selected_score = min(5, self.selected_score + 2)
 
             if self._timer_toggle.handle_event(event): self._timer_enabled = not self._timer_enabled
             if self._timer_enabled:

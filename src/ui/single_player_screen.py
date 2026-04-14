@@ -286,7 +286,10 @@ class SinglePlayerScreen:
         self.draw_top_stat_pill(sx, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue)
         self.draw_top_stat_pill(sx + 155, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
         self.draw_top_stat_pill(sx + 310, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
-        self.draw_top_stat_pill(sx + 485, stat_y, 140, f"KỶ LỤC: {self.best_score}", color_text_red, color_text_red, is_record=True)
+
+        correct_tiles = self.gm.board.count_correct_tiles()
+        total_tiles = self.gm.board.total_tiles
+        self.draw_top_stat_pill(sx + 485, stat_y, 140, f"Ô ĐÚNG: {correct_tiles}/{total_tiles}", color_text_red, color_text_red, is_record=True)
 
         if self.wood_frame_img:
             frame_x = config.MARGIN_LEFT - 20

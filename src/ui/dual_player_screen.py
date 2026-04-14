@@ -331,7 +331,7 @@ class DualPlayerScreen:
         self.screen.blit(lbl_s, lbl_s.get_rect(centerx=rect.centerx, top=rect.y + 5))
         self.screen.blit(val_s, val_s.get_rect(centerx=rect.centerx, bottom=rect.bottom - 7))
 
-    def _draw_stat_box(self, player: PlayerSlot, board_x: int):
+    def _draw_stat_box(self, player: PlayerSlot, board, board_x: int):
         box = pygame.Rect(board_x, self._stat_box_y, self._B, self._stat_box_h)
         pygame.draw.rect(self.screen, (255, 252, 245), box, border_radius=12)
         pygame.draw.rect(self.screen, (230, 210, 200), box, border_radius=12, width=2)
@@ -341,13 +341,14 @@ class DualPlayerScreen:
         c_lbl = (160, 110, 90)
         c_val = (60, 60, 60)
 
-        time_str = BaseGameManager.format_time(player.elapsed_time)
+        correct_tiles = board.count_correct_tiles()
+        total_tiles = board.total_tiles
 
         line1 = self.font_small.render(
             f"Số bước:  {player.move_count}",
             True, c_val)
         line2 = self.font_small.render(
-            f"Thời gian:  {time_str}",
+            f"Ô đúng:  {correct_tiles}/{total_tiles}",
             True, c_val)
 
         self.screen.blit(line1, (text_x, box.y + 10))
@@ -411,8 +412,8 @@ class DualPlayerScreen:
             board_size=self._B
         )
 
-        self._draw_stat_box(self.p1, self._p1_board_x)
-        self._draw_stat_box(self.p2, self._p2_board_x)
+        self._draw_stat_box(self.p1, self.board1, self._p1_board_x)
+        self._draw_stat_box(self.p2, self.board2, self._p2_board_x)
 
         if self.gm.is_paused:
             overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)

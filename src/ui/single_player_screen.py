@@ -92,16 +92,16 @@ class SinglePlayerScreen:
             return PillButton((x, btn_y, btn_w, btn_h), text, self.font_btn,
                               color_top=c_top, color_bot=c_bot, shadow_color=c_shad)
 
-        self.btn_hint   = _pb(0, "GỢI Ý",   (255,230,190), (255,204,150), (230,180,120))
-        self.btn_ai     = _pb(1, "AI GIẢI",  (190,240,255), (135,215,245), (110,190,220))
-        self.btn_undo   = _pb(2, "HOÀN TÁC", (210,250,200), (160,230,150), (130,200,120))
-        self.btn_replay = _pb(3, "CHƠI LẠI", (255,200,230), (255,150,200), (220,120,170))
-        self.btn_pause  = _pb(4, "TẠM DỪNG", (200,210,255), (150,170,255), (120,140,220))
-        self.btn_quit   = _pb(5, "THOÁT",    (255,190,190), (255,140,140), (220,110,110))
+        self.btn_hint   = _pb(0, "HINT",   (255,230,190), (255,204,150), (230,180,120))
+        self.btn_ai     = _pb(1, "AI SOLVE",  (190,240,255), (135,215,245), (110,190,220))
+        self.btn_undo   = _pb(2, "UNDO", (210,250,200), (160,230,150), (130,200,120))
+        self.btn_replay = _pb(3, "REPLAY", (255,200,230), (255,150,200), (220,120,170))
+        self.btn_pause  = _pb(4, "PAUSE", (200,210,255), (150,170,255), (120,140,220))
+        self.btn_quit   = _pb(5, "EXIT",    (255,190,190), (255,140,140), (220,110,110))
 
         # --- LÀM MỜ NÚT AI NẾU ĐÃ CHỌN LÀ BOT TỪ SETUP ---
         if self.is_bot:
-            self.btn_ai.text = "TỰ ĐỘNG"
+            self.btn_ai.text = "AUTOMATIC"
             self.btn_ai.color_top = (180, 180, 180)
             self.btn_ai.color_bot = (140, 140, 140)
             self.btn_ai.shadow_color = (100, 100, 100)
@@ -138,7 +138,7 @@ class SinglePlayerScreen:
                 self.is_ai_playing = not self.is_ai_playing
                 if self.is_ai_playing:
                     self.bot.clear_memory()
-                self.btn_ai.text = "DỪNG AI" if self.is_ai_playing else "AI GIẢI"
+                self.btn_ai.text = "STOP AI" if self.is_ai_playing else "AI SOLVE"
 
             if not self.is_bot and not self.is_ai_playing:
                 if self.btn_undo.handle_event(event):
@@ -169,13 +169,8 @@ class SinglePlayerScreen:
 
             if self.btn_pause.handle_event(event):
                 self.is_paused = not self.is_paused
-                self.btn_pause.text = "TIẾP TỤC" if self.is_paused else "TẠM DỪNG"
+                self.btn_pause.text = "CONTINUE" if self.is_paused else "PAUSE"
             if self.btn_quit.handle_event(event):   return "MENU"
-
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
-                self.gm.is_playing = False
-                self._on_win()
-                continue
 
             if self.gm.is_playing and not self.show_full_image and not self.is_paused and not self.is_ai_playing:
                 move_success = False
@@ -211,7 +206,7 @@ class SinglePlayerScreen:
         self.show_full_image = True
         self.is_ai_playing = False
         if not self.is_bot:
-            self.btn_ai.text = "AI GIẢI"
+            self.btn_ai.text = "AI SOLVE"
             if self.gm.board.is_solved():
                 if self.best_score == "--" or self.player.move_count < self.best_score:
                     self.best_score = self.player.move_count
@@ -279,7 +274,7 @@ class SinglePlayerScreen:
         if self.title_img:
             self.screen.blit(self.title_img, (screen_w//2 - self.title_img.get_width()//2, 10))
         else:
-            title_txt = self.font_stat.render("CHƠI ĐƠN", True, (0, 120, 120))
+            title_txt = self.font_stat.render("SINGLE PLAYER", True, (0, 120, 120))
             self.screen.blit(title_txt, (screen_w//2 - title_txt.get_width()//2, 25))
 
         stat_y = 80
@@ -296,12 +291,12 @@ class SinglePlayerScreen:
         sx = (screen_w - total_w) // 2
 
         self.draw_top_stat_pill(sx, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue)
-        self.draw_top_stat_pill(sx + 155, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
-        self.draw_top_stat_pill(sx + 310, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
+        self.draw_top_stat_pill(sx + 155, stat_y, 140, f"LEVEL: {self.size}x{self.size}", color_text_blue, color_text_blue)
+        self.draw_top_stat_pill(sx + 310, stat_y, 160, f"MOVE: {self.player.move_count}", color_text_red, color_text_red)
 
         correct_tiles = self.gm.board.count_correct_tiles()
         total_tiles = self.gm.board.total_tiles
-        self.draw_top_stat_pill(sx + 485, stat_y, 140, f"Ô ĐÚNG: {correct_tiles}/{total_tiles}", color_text_red, color_text_red, is_record=True)
+        self.draw_top_stat_pill(sx + 485, stat_y, 140, f"CORRECT: {correct_tiles}/{total_tiles}", color_text_red, color_text_red, is_record=True)
 
         if self.wood_frame_img:
             frame_x = config.MARGIN_LEFT - 20
@@ -319,7 +314,7 @@ class SinglePlayerScreen:
             overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
             overlay.fill((255, 255, 255, 150))
             self.screen.blit(overlay, (0, 0))
-            pause_txt = self.font_stat.render("ĐÃ TẠM DỪNG", True, (200, 80, 100))
+            pause_txt = self.font_stat.render("PAUSED", True, (200, 80, 100))
             self.screen.blit(pause_txt, pause_txt.get_rect(center=(screen_w//2, screen_h//2)))
 
         mouse = pygame.mouse.get_pos()

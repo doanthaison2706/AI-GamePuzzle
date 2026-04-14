@@ -9,7 +9,7 @@ from src.ui.win_single_screen import WinSingleScreen
 from src.ui.win_dual_screen import WinDualScreen
 from src.core.settings_manager import SettingsManager
 from src.ui.options_screen import OptionsScreen
-
+from src.ui.info_screen import InfoScreen
 
 class GameApp:
     def __init__(self):
@@ -54,6 +54,10 @@ class GameApp:
     def _go_options(self):
         self.state = "OPTIONS"
         self.current_screen = OptionsScreen(self.screen)
+        
+    def _go_info(self):
+        self.state = "INFO"
+        self.current_screen = InfoScreen(self.screen)
 
     def _go_play(self, setup_data: dict):
         """Launch the correct game screen based on data['multiplayer']."""
@@ -90,6 +94,8 @@ class GameApp:
                 next_state, _ = self.current_screen.handle_events(events)
                 if next_state == "SETUP":
                     self._go_setup()
+                elif next_state == "INFO":               # <- Thêm dòng này
+                    self._go_info()
                 elif next_state == "OPTIONS":
                     self._go_options()
 
@@ -103,6 +109,11 @@ class GameApp:
 
             # ── OPTIONS ──────────────────────────────────────────────────────
             elif self.state == "OPTIONS":
+                next_state, _ = self.current_screen.handle_events(events)
+                if next_state == "MENU":
+                    self._go_menu()
+                    
+            elif self.state == "INFO":
                 next_state, _ = self.current_screen.handle_events(events)
                 if next_state == "MENU":
                     self._go_menu()

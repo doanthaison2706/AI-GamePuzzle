@@ -47,11 +47,11 @@ class WinDualScreen:
         btn_y = h - 100
 
         self.btn_replay = PillButton(
-            (start_x, btn_y, btn_w, btn_h), "TRẬN MỚI", self.font_btn,
+            (start_x, btn_y, btn_w, btn_h), "NEW MATCH", self.font_btn,
             color_top=(255, 210, 130), color_bot=(255, 175, 85), shadow_color=(220, 140, 60),
         )
         self.btn_menu = PillButton(
-            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "THOÁT", self.font_btn,
+            (start_x + btn_w + spacing, btn_y, btn_w, btn_h), "QUIT", self.font_btn,
             color_top=(220, 180, 255), color_bot=(190, 140, 240), shadow_color=(160, 110, 210),
         )
 
@@ -82,13 +82,13 @@ class WinDualScreen:
 
         # Tiêu đề
         if self.winner_id:
-            title_text = f"NGƯỜI CHƠI {self.winner_id} THẮNG!"
+            title_text = f"PLAYER {self.winner_id} WINS!"
         else:
-            title_text = "HÒA!"
+            title_text = "TIE!"
         title = self.font_title.render(title_text, True, (240, 100, 120))
         self.screen.blit(title, title.get_rect(centerx=cx, top=40))
 
-        sub = self.font_sub.render(f"Tỉ số tổng: {self.score}", True, (80, 160, 140))
+        sub = self.font_sub.render(f"Total Score: {self.score}", True, (80, 160, 140))
         self.screen.blit(sub, sub.get_rect(centerx=cx, top=95))
 
         # Panel thống kê
@@ -99,9 +99,9 @@ class WinDualScreen:
         pygame.draw.rect(self.screen, (255, 200, 200), panel_rect, border_radius=25, width=3)
 
         spacing = 160
-        self._draw_stat_box(cx - spacing, panel_rect.y + 20, "THỜI GIAN", self.time_str)
-        self._draw_stat_box(cx, panel_rect.y + 20, "P1 BƯỚC", self.p1_moves)
-        self._draw_stat_box(cx + spacing, panel_rect.y + 20, "P2 BƯỚC", self.p2_moves)
+        self._draw_stat_box(cx - spacing, panel_rect.y + 20, "TIME", self.time_str)
+        self._draw_stat_box(cx, panel_rect.y + 20, "P1 MOVES", self.p1_moves)
+        self._draw_stat_box(cx + spacing, panel_rect.y + 20, "P2 MOVES", self.p2_moves)
 
         # Nút
         mouse = pygame.mouse.get_pos()

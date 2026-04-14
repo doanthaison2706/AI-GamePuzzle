@@ -57,7 +57,7 @@ class SetupSingleScreen:
         self._prev_rect.centerx = cx
         # Đẩy khung ảnh xuống (Từ 70 -> 100)
         self._prev_rect.top = 100
-        
+
         btn_w = 220
         # Đẩy nút chọn ảnh xuống (Từ 265 -> 295)
         self._btn_pick_img = _mk((cx - btn_w - 15, 295, btn_w, 46), "📁 CHỌN ẢNH TỪ MÁY", dim(P1_COLOR), P1_COLOR)
@@ -67,20 +67,20 @@ class SetupSingleScreen:
         p1_cx = W // 4
         p2_cx = 3 * W // 4
         # Đẩy khu vực người chơi xuống (Từ 360 -> 400)
-        p_row_y = 400 
-        
+        p_row_y = 400
+
         self._btn_p1_type = _mk((p1_cx - 80, p_row_y + 35, 160, 42), "👤 HUMAN", (60, 140, 200), (80, 160, 220))
         self._btn_p2_type = _mk((p2_cx - 80, p_row_y + 35, 160, 42), "👤 HUMAN", (60, 140, 200), (80, 160, 220))
 
         def _make_diff_btns(center_x, y_pos):
             btns = {}
 
-            bw = 70 
+            bw = 70
             bx = center_x - (3 * bw + 16) // 2
             for i, (k, lbl) in enumerate(_DIFFS.items()):
                 btns[k] = RoundedButton((bx + i*(bw+8), y_pos, bw, 38), lbl, self._font_btn, color=(55, 55, 100), hover_color=(75, 75, 140))
             return btns
-            
+
         self._p1_diff_btns = _make_diff_btns(p1_cx, p_row_y + 85)
         self._p2_diff_btns = _make_diff_btns(p2_cx, p_row_y + 85)
 
@@ -121,9 +121,9 @@ class SetupSingleScreen:
         for event in events:
             if self._btn_back.handle_event(event): return "MENU", None
 
-            if not self.is_multi and self._btn_p2_add.handle_event(event): 
+            if not self.is_multi and self._btn_p2_add.handle_event(event):
                 self.is_multi = True
-            if self.is_multi and self._btn_p2_remove.handle_event(event): 
+            if self.is_multi and self._btn_p2_remove.handle_event(event):
                 self.is_multi = False
 
             if self._btn_pick_img.handle_event(event): self._pick()
@@ -135,7 +135,7 @@ class SetupSingleScreen:
             if self.p_type[1] == "BOT":
                 for k, btn in self._p1_diff_btns.items():
                     if btn.handle_event(event): self.ai_diff[1] = k
-            
+
             if self.is_multi:
                 if self._btn_p2_type.handle_event(event):
                     self.p_type[2] = "BOT" if self.p_type[2] == "HUMAN" else "HUMAN"
@@ -151,8 +151,9 @@ class SetupSingleScreen:
                 if self._score_inc.handle_event(event): self.selected_score = min(10, self.selected_score + 1)
 
             if self._timer_toggle.handle_event(event): self._timer_enabled = not self._timer_enabled
-            if self._timer_dec.handle_event(event): self._timer_secs = max(30, self._timer_secs - 30)
-            if self._timer_inc.handle_event(event): self._timer_secs = min(600, self._timer_secs + 30)
+            if self._timer_enabled:
+                if self._timer_dec.handle_event(event): self._timer_secs = max(30, self._timer_secs - 30)
+                if self._timer_inc.handle_event(event): self._timer_secs = min(600, self._timer_secs + 30)
 
             if self._btn_start.handle_event(event):
                 data = {
@@ -160,8 +161,8 @@ class SetupSingleScreen:
                     "time":          self._timer_secs if self._timer_enabled else 0,
                     "score":         self.selected_score,
                     "multiplayer":   self.is_multi,
-                    "image":         self.global_image,      
-                    "image_p2":      self.global_image,      
+                    "image":         self.global_image,
+                    "image_p2":      self.global_image,
                     "p1_type":       self.p_type[1],
                     "p2_type":       self.p_type[2] if self.is_multi else "HUMAN",
                     "p1_diff":       self.ai_diff[1],
@@ -224,6 +225,13 @@ class SetupSingleScreen:
         self._timer_toggle.hover_color = (65, 160, 75) if self._timer_enabled else (160, 70, 70)
         self._timer_toggle.draw(self.screen, mouse)
 
+        btn_base = BTN_COLOR if self._timer_enabled else (40, 40, 40)
+        btn_hov = BTN_HOVER if self._timer_enabled else (40, 40, 40)
+        self._timer_dec.color = btn_base
+        self._timer_dec.hover_color = btn_hov
+        self._timer_inc.color = btn_base
+        self._timer_inc.hover_color = btn_hov
+
         self._timer_dec.draw(self.screen, mouse)
         m, s = divmod(self._timer_secs, 60)
         t_text = self._font_val.render(f"{m:02d}:{s:02d}", True, ACCENT if self._timer_enabled else MUTED_TEXT)
@@ -259,7 +267,7 @@ class SetupSingleScreen:
         lbl = self._font_h1.render("PLAYER 2", True, P2_COLOR)
         self.screen.blit(lbl, lbl.get_rect(center=(col_cx, y_pos)))
         self._btn_p2_remove.draw(self.screen, mouse)
-        
+
         self._draw_player_section(2, col_cx, P2_COLOR, self._btn_p2_type, self._p2_diff_btns, mouse, y_pos)
 
     def _label(self, text: str, cx: int, y: int) -> None:

@@ -43,7 +43,9 @@ class DualPlayerScreen:
         # --- GAME MANAGER ---
         p1 = PlayerSlot(player_id=1, player_type=p1_type_enum)
         p2 = PlayerSlot(player_id=2, player_type=p2_type_enum)
-        self.gm = DualGameManager(size=self.size, p1=p1, p2=p2)
+        score_limit = setup_data.get("score", 3)
+        time_limit = setup_data.get("time", 0)
+        self.gm = DualGameManager(size=self.size, p1=p1, p2=p2, score_limit=score_limit, time_limit=time_limit)
         self.gm.new_game()
 
         self.p1 = self.gm.p1
@@ -89,11 +91,10 @@ class DualPlayerScreen:
         self._stat_box_h = 70
 
         self._stat_box_y = self._board_y + B + 35
-        self._B = B 
+        self._B = B
 
-        self.is_winning    = False
         self.win_start_time = 0
-
+        self.is_round_over_state = False
         # Âm thanh
         try:
             self.move_sound = pygame.mixer.Sound("assets/sounds/move.wav")
@@ -121,7 +122,7 @@ class DualPlayerScreen:
             self.bg_img = pygame.transform.scale(self.bg_img, (W, H))
         except Exception:
             self.bg_img = None
-            
+
         try:
             self.wood_frame_img = pygame.image.load("assets/images/wood_frame.png").convert_alpha()
             # Ở chế độ Dual, bàn cờ là self._B nên khung sẽ là self._B + 40
@@ -168,6 +169,9 @@ class DualPlayerScreen:
         self.btn_p2_undo = _pb((p2_cx + pad // 2, btn_y, bw_act, btn_h),
                                "HOÀN TÁC", (200,210,255), (150,170,255), (120,140,220))
 
+        self.btn_next_round = _pb((W // 2 - bw_ctr // 2, self._board_y + self._B // 2 + 30, bw_ctr, btn_h),
+                                "TIẾP TỤC", (160,230,150), (120,200,110), (90,160,80))
+
         # --- LÀM MỜ NÚT AI NẾU ĐÃ CHỌN LÀ BOT TỪ SETUP ---
         if self.is_p1_bot:
             self.btn_p1_ai.text = "🤖 TỰ ĐỘNG"
@@ -182,30 +186,35 @@ class DualPlayerScreen:
             self.btn_p2_ai.shadow_color = (100, 100, 100)
 
     def handle_events(self, events):
-        if self.is_winning:
-            if pygame.time.get_ticks() - self.win_start_time >= 1500:
-                winner = self.gm.get_winner()
-                result_data = {
-                    "winner_id": winner.player_id if winner else 0,
-                    "time":      self.gm.get_formatted_time(),
-                    "p1_moves":  self.p1.move_count,
-                    "p2_moves":  self.p2.move_count,
-                    "score":     self.gm.get_score_text(),
-                    "size":      self.size,
-                }
-                return "WIN_DUAL", result_data
-            return "PLAYING_DUAL"
-
         for event in events:
             if self.btn_quit.handle_event(event):     return "MENU"
             if self.btn_pause.handle_event(event):    self.gm.is_paused = not self.gm.is_paused
+
+            if self.is_round_over_state:
+                if self.btn_next_round.handle_event(event):
+                    self.is_round_over_state = False
+                    if self.gm.is_game_over():
+                        winner = self.gm.get_winner()
+                        result_data = {
+                            "winner_id": winner.player_id if winner else 0,
+                            "time":      self.gm.get_formatted_time(),
+                            "p1_moves":  self.p1.move_count,
+                            "p2_moves":  self.p2.move_count,
+                            "score":     self.gm.get_score_text(),
+                            "size":      self.size,
+                        }
+                        return "WIN_DUAL", result_data
+                    else:
+                        self.gm.new_game()
+                        self.ai_active[1] = self.is_p1_bot
+                        self.ai_active[2] = self.is_p2_bot
+                return "PLAYING_DUAL"
 
             # --- CẬP NHẬT TRẬN MỚI: Tự động chạy lại AI cho các BOT ---
             if self.btn_new_game.handle_event(event):
                 self.gm.new_game()
                 self.ai_active[1] = self.is_p1_bot
                 self.ai_active[2] = self.is_p2_bot
-                self.is_winning = False
 
             if self.btn_p1_undo.handle_event(event) and not self.gm.is_paused:
                 if self.gm.undo(1):
@@ -229,27 +238,45 @@ class DualPlayerScreen:
                 self.btn_p2_ai.text = "DỪNG AI" if self.ai_active[2] else "AI GIẢI"
 
             #  KHÓA BÀN PHÍM NẾU AI ĐANG CHẠY ---
-            if event.type == pygame.KEYDOWN and not self.gm.is_paused:
-                moved = False
+            moved_p1 = False
+            moved_p2 = False
 
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.gm.is_paused:
+                mx, my = event.pos
+                if self._board_y <= my <= self._board_y + self._B:
+                    t_size = self._B // self.size
+                    if not self.ai_active[1] and self._p1_board_x <= mx <= self._p1_board_x + self._B:
+                        r = (my - self._board_y) // t_size
+                        c = (mx - self._p1_board_x) // t_size
+                        moved_p1 = self.gm.process_move(1, r, c)
+                    elif not self.ai_active[2] and self._p2_board_x <= mx <= self._p2_board_x + self._B:
+                        r = (my - self._board_y) // t_size
+                        c = (mx - self._p2_board_x) // t_size
+                        moved_p2 = self.gm.process_move(2, r, c)
+
+            if event.type == pygame.KEYDOWN and not self.gm.is_paused:
                 if event.key in self.P1_KEYS and not self.ai_active[1]:
                     dr, dc = self.P1_KEYS[event.key]
                     er, ec = self.board1.get_empty_pos()
-                    moved = self.gm.process_move(1, er + dr, ec + dc)
+                    moved_p1 = self.gm.process_move(1, er + dr, ec + dc)
 
                 elif event.key in self.P2_KEYS and not self.ai_active[2]:
                     dr, dc = self.P2_KEYS[event.key]
                     er, ec = self.board2.get_empty_pos()
-                    moved = self.gm.process_move(2, er + dr, ec + dc)
+                    moved_p2 = self.gm.process_move(2, er + dr, ec + dc)
 
-                if moved:
-                    if self.move_sound: self.move_sound.play()
-                    if self.gm.get_winner() is not None:
-                        self.is_winning = True
-                        self.win_start_time = pygame.time.get_ticks()
-                        self.ai_active = {1: False, 2: False}
-                        if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
-                        if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
+            if moved_p1 or moved_p2:
+                if self.move_sound: self.move_sound.play()
+
+                if self.gm.is_round_over() and not self.is_round_over_state:
+                    self.is_round_over_state = True
+                    self.ai_active = {1: False, 2: False}
+                    if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
+                    if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
+                    if self.gm.is_game_over():
+                        self.btn_next_round.text = "KẾT QUẢ"
+                    else:
+                        self.btn_next_round.text = "TIẾP TỤC"
 
         return "PLAYING_DUAL"
 
@@ -257,8 +284,18 @@ class DualPlayerScreen:
         if not self.gm.is_paused:
             self.gm.update_time(dt)
 
+            if not self.gm.is_playing and self.gm.is_round_over() and not self.is_round_over_state:
+                self.is_round_over_state = True
+                self.ai_active = {1: False, 2: False}
+                if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
+                if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
+                if self.gm.is_game_over():
+                    self.btn_next_round.text = "KẾT QUẢ"
+                else:
+                    self.btn_next_round.text = "TIẾP TỤC"
+
         # --- LOGIC 2 BOT CHẠY ĐUA ---
-        if self.gm.is_playing and not self.gm.is_paused and not self.is_winning:
+        if self.gm.is_playing and not self.gm.is_paused and not self.is_round_over_state:
             current_time = pygame.time.get_ticks()
 
             for p_id in [1, 2]:
@@ -276,12 +313,15 @@ class DualPlayerScreen:
                                 if self.move_sound: self.move_sound.play()
                                 self.last_bot_move[p_id] = current_time
 
-                                if self.gm.get_winner() is not None:
-                                    self.is_winning = True
-                                    self.win_start_time = pygame.time.get_ticks()
+                                if self.gm.is_round_over() and not self.is_round_over_state:
+                                    self.is_round_over_state = True
                                     self.ai_active = {1: False, 2: False}
                                     if not self.is_p1_bot: self.btn_p1_ai.text = "AI GIẢI"
                                     if not self.is_p2_bot: self.btn_p2_ai.text = "AI GIẢI"
+                                    if self.gm.is_game_over():
+                                        self.btn_next_round.text = "KẾT QUẢ"
+                                    else:
+                                        self.btn_next_round.text = "TIẾP TỤC"
 
     def _draw_info_pill(self, rect, label, value, lbl_color, val_color):
         pygame.draw.rect(self.screen, (235, 245, 255), rect, border_radius=12)
@@ -343,7 +383,7 @@ class DualPlayerScreen:
         p2_lbl = self.font_stat.render("NGƯỜI CHƠI 2  (↑↓←→)", True, (200, 100, 80))
         self.screen.blit(p1_lbl, (self._p1_board_x, self._board_y - 45))
         self.screen.blit(p2_lbl, (self._p2_board_x, self._board_y - 45))
-        
+
         # --- Vẽ khung gỗ cho 2 bàn cờ ---
         def draw_frame(actual_x, actual_y):
             # Lùi ra 20px so với tọa độ thật để tạo viền
@@ -374,6 +414,13 @@ class DualPlayerScreen:
         self._draw_stat_box(self.p1, self._p1_board_x)
         self._draw_stat_box(self.p2, self._p2_board_x)
 
+        if self.gm.is_paused:
+            overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+            overlay.fill((255, 255, 255, 150))
+            self.screen.blit(overlay, (0, 0))
+            pause_txt = self.font_stat.render("ĐÃ TẠM DỪNG", True, (200, 80, 100))
+            self.screen.blit(pause_txt, pause_txt.get_rect(center=(self.screen.get_width()//2, self.screen.get_height()//2)))
+
         mouse = pygame.mouse.get_pos()
         self.btn_pause.text = "TIẾP TỤC" if self.gm.is_paused else "TẠM DỪNG"
         self.btn_new_game.draw(self.screen, mouse)
@@ -384,11 +431,24 @@ class DualPlayerScreen:
         self.btn_p2_ai.draw(self.screen, mouse)
         self.btn_p2_undo.draw(self.screen, mouse)
 
-        if self.is_winning:
-            winner = self.gm.get_winner()
+        if self.is_round_over_state:
             overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
             overlay.fill((255, 255, 255, 160))
             self.screen.blit(overlay, (0, 0))
-            msg = f"NGƯỜI CHƠI {winner.player_id} THẮNG!" if winner else "HÒA!"
+
+            rw = self.gm.round_winner
+            if rw == "TIE":
+                msg = "HÒA VÁN NÀY (HẾT GIỜ)"
+            elif rw:
+                msg = f"NGƯỜI CHƠI {rw.player_id} THẮNG VÁN"
+            else:
+                msg = "VÁN KẾT THÚC"
+
+            if self.gm.is_game_over():
+                winner = self.gm.get_winner()
+                msg = f"NGƯỜI CHƠI {winner.player_id} THẮNG CẢ TRẬN!" if winner else "HÒA CẢ TRẬN!"
+
             win_surf = self.font_title.render(msg, True, (230, 80, 100))
-            self.screen.blit(win_surf, win_surf.get_rect(center=self.screen.get_rect().center))
+            self.screen.blit(win_surf, win_surf.get_rect(center=(self.screen.get_width()//2, self.screen.get_height()//2 - 40)))
+            self.btn_next_round.draw(self.screen, mouse)
+            self.btn_next_round.draw(self.screen, mouse)

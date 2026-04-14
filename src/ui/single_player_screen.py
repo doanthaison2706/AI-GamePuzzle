@@ -20,7 +20,7 @@ class SinglePlayerScreen:
         if self.full_image:
             _, self.image_slices = slice_image(self.full_image, config.BOARD_SIZE, self.size)
 
-        self.gm = SingleGameManager(size=self.size)
+        self.gm = SingleGameManager(size=self.size, time_limit=setup_data.get("time", 0))
         self.gm.new_game()
         self.player = self.gm.players[0]
         self.board = self.gm.board
@@ -38,7 +38,11 @@ class SinglePlayerScreen:
         self.last_bot_move_time = 0
         self.bot_speed = 300
 
-        self.best_score = 35
+        self.settings_mgr = SettingsManager()
+        self.best_score = self.settings_mgr.get(f"high_score_{self.size}x{self.size}")
+        if self.best_score is None:
+            self.best_score = "--"
+
         self.is_paused = False
         self.is_winning = False
         self.win_start_time = 0
@@ -108,7 +112,8 @@ class SinglePlayerScreen:
                 result_data = {
                     "time": self.gm.get_formatted_time(),
                     "moves": self.player.move_count,
-                    "size": self.size
+                    "size": self.size,
+                    "is_solved": self.gm.board.is_solved()
                 }
                 return "WIN_SINGLE", result_data
             return "PLAYING"
@@ -131,7 +136,16 @@ class SinglePlayerScreen:
                     self.bot.clear_memory()
                     if self.move_sound: self.move_sound.play()
 
-            if self.btn_hint.handle_event(event): pass
+            if self.btn_hint.handle_event(event):
+                if self.gm.is_playing and not self.is_winning and not self.is_paused and not self.is_bot:
+                    empty_r, empty_c = self.board.get_empty_pos()
+                    dx, dy = self.bot.get_next_move(self.board.matrix, empty_r, empty_c)
+                    if (dx, dy) != (0, 0):
+                        tr, tc = empty_r + dx, empty_c + dy
+                        if self.gm.process_move(tr, tc):
+                            if self.move_sound: self.move_sound.play()
+                            if not self.gm.is_playing:
+                                self._on_win()
 
             # --- CHƠI LẠI: Tự động chạy AI nếu là BOT ---
             if self.btn_replay.handle_event(event):
@@ -141,17 +155,14 @@ class SinglePlayerScreen:
                 if self.is_bot:
                     self.bot.clear_memory()
 
-            if self.btn_pause.handle_event(event):  self.is_paused = not self.is_paused
+            if self.btn_pause.handle_event(event):
+                self.is_paused = not self.is_paused
+                self.btn_pause.text = "TIẾP TỤC" if self.is_paused else "TẠM DỪNG"
             if self.btn_quit.handle_event(event):   return "MENU"
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
-                self.is_winning = True
-                self.win_start_time = pygame.time.get_ticks()
-                self.show_full_image = True
                 self.gm.is_playing = False
-                self.is_ai_playing = False
-                if not self.is_bot:
-                    self.btn_ai.text = "AI GIẢI"
+                self._on_win()
                 continue
 
             if self.gm.is_playing and not self.show_full_image and not self.is_paused and not self.is_ai_playing:
@@ -177,15 +188,28 @@ class SinglePlayerScreen:
                     if self.move_sound: self.move_sound.play()
 
                     if not self.gm.is_playing:
-                        self.is_winning = True
-                        self.win_start_time = pygame.time.get_ticks()
-                        self.show_full_image = True
+                        self._on_win()
 
         return "PLAYING"
+
+    def _on_win(self):
+        if self.is_winning: return
+        self.is_winning = True
+        self.win_start_time = pygame.time.get_ticks()
+        self.show_full_image = True
+        self.is_ai_playing = False
+        if not self.is_bot:
+            self.btn_ai.text = "AI GIẢI"
+            if self.gm.board.is_solved():
+                if self.best_score == "--" or self.player.move_count < self.best_score:
+                    self.best_score = self.player.move_count
+                    self.settings_mgr.update({f"high_score_{self.size}x{self.size}": self.best_score})
 
     def update(self, dt: float = 0.0):
         if self.gm and not self.is_paused:
             self.gm.update_time(dt)
+            if not self.gm.is_playing and not self.is_winning:
+                self._on_win()
 
         if self.is_ai_playing and self.gm.is_playing and not self.is_paused and not self.is_winning:
             current_time = pygame.time.get_ticks()
@@ -203,12 +227,7 @@ class SinglePlayerScreen:
                         self.last_bot_move_time = current_time
 
                         if not self.gm.is_playing:
-                            self.is_winning = True
-                            self.win_start_time = pygame.time.get_ticks()
-                            self.show_full_image = True
-                            self.is_ai_playing = False
-                            if not self.is_bot:
-                                self.btn_ai.text = "AI GIẢI"
+                            self._on_win()
 
     def draw_gradient_rect(self, surface, rect, color_top, color_bottom, radius, shadow_color=None, shadow_offset=6, border_color=None):
         if shadow_color:
@@ -255,10 +274,19 @@ class SinglePlayerScreen:
         color_text_blue = (50, 100, 150)
         color_text_red = (200, 80, 100)
 
-        self.draw_top_stat_pill(80, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue)
-        self.draw_top_stat_pill(240, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
-        self.draw_top_stat_pill(400, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
-        self.draw_top_stat_pill(580, stat_y, 140, f"KỶ LỤC: {self.best_score}", color_text_red, color_text_red, is_record=True)
+        total_w = 140 + 155 + 155 + 160 # 140, 140, 160, 140 width but slightly varied. total widths:
+        # Time: 140
+        # Level: 140
+        # Move: 160
+        # Best: 140
+        # Spacing: 15
+        total_w = 140 + 140 + 160 + 140 + 45
+        sx = (screen_w - total_w) // 2
+
+        self.draw_top_stat_pill(sx, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue)
+        self.draw_top_stat_pill(sx + 155, stat_y, 140, f"CẤP ĐỘ: {self.size}x{self.size}", color_text_blue, color_text_blue)
+        self.draw_top_stat_pill(sx + 310, stat_y, 160, f"DI CHUYỂN: {self.player.move_count}", color_text_red, color_text_red)
+        self.draw_top_stat_pill(sx + 485, stat_y, 140, f"KỶ LỤC: {self.best_score}", color_text_red, color_text_red, is_record=True)
 
         if self.wood_frame_img:
             frame_x = config.MARGIN_LEFT - 20

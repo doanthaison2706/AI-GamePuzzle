@@ -9,7 +9,6 @@ class SettingsManager:
     DEFAULT_SETTINGS = {
         "music_volume": 80,
         "move_volume": 70,
-        "brightness": 100,
     }
 
     CONFIG_FILE = "configs/settings.json"

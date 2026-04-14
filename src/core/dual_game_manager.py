@@ -9,8 +9,8 @@ class DualGameManager(BaseGameManager):
     Uses two Board instances with the same shuffle seed."""
 
     # FIX 1: Nhận thêm biến score_limit (mặc định là 3)
-    def __init__(self, size: int, p1: PlayerSlot, p2: PlayerSlot, score_limit: int = 3):
-        super().__init__(size)
+    def __init__(self, size: int, p1: PlayerSlot, p2: PlayerSlot, score_limit: int = 3, time_limit: int = 0):
+        super().__init__(size, time_limit)
         self.p1 = p1
         self.p2 = p2
         self.score_limit = score_limit
@@ -20,7 +20,7 @@ class DualGameManager(BaseGameManager):
 
         # Scoreboard — giữ nguyên tỉ số qua các ván đấu
         self.score = {p1.player_id: 0, p2.player_id: 0}
-        
+
         # Tách biệt: Thắng 1 ván vs Thắng cả trận
         self.round_winner: PlayerSlot | None = None
         self.match_winner: PlayerSlot | None = None
@@ -40,11 +40,11 @@ class DualGameManager(BaseGameManager):
         self.p2.reset_stats()
         self.p1.correct_count = self.board1.count_correct_tiles()
         self.p2.correct_count = self.board2.count_correct_tiles()
-        
+
         self.is_playing = True
         self.is_paused = False
         self.elapsed_time = 0.0
-        
+
         # Chỉ reset trạng thái của ván đấu
         self.round_winner = None
 
@@ -70,11 +70,11 @@ class DualGameManager(BaseGameManager):
             if board.is_solved():
                 self.round_winner = player
                 self.score[player.player_id] += 1
-                
+
                 # FIX 2: Kiểm tra xem đã đạt mốc BO3/BO5 chưa
                 if self.score[player.player_id] >= self.score_limit:
                     self.match_winner = player
-                    
+
                 self._stop_all()
 
             return True
@@ -98,9 +98,42 @@ class DualGameManager(BaseGameManager):
     def get_winner(self) -> PlayerSlot | None:
         """LƯU Ý: Giờ hàm này chỉ trả về kết quả khi CẢ TRẬN đã kết thúc"""
         return self.match_winner
-        
+
     def is_round_over(self) -> bool:
         return self.round_winner is not None
+
+    def update_time(self, dt: float = 0.0):
+        super().update_time(dt)
+        if self.time_limit > 0 and self.remaining_time <= 0 and self.round_winner is None:
+            self._determine_round_winner_on_timeout()
+
+    def _determine_round_winner_on_timeout(self):
+        c1 = self.p1.correct_count
+        c2 = self.p2.correct_count
+        m1 = self.p1.move_count
+        m2 = self.p2.move_count
+
+        if c1 > c2:
+            winner = self.p1
+        elif c2 > c1:
+            winner = self.p2
+        else:
+            if m1 < m2:
+                winner = self.p1
+            elif m2 < m1:
+                winner = self.p2
+            else:
+                winner = None # Tie
+
+        self.round_winner = winner
+        if winner:
+            self.score[winner.player_id] += 1
+            if self.score[winner.player_id] >= self.score_limit:
+                self.match_winner = winner
+        else:
+            self.round_winner = "TIE" # Mark as tie but obviously not a player slot
+
+        self._stop_all()
 
     def is_game_over(self) -> bool:
         return self.match_winner is not None

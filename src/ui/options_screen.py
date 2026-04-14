@@ -17,7 +17,6 @@ class OptionsScreen:
         # Load local state from settings config
         self.music_volume = self.settings_mgr.get("music_volume")
         self.move_volume = self.settings_mgr.get("move_volume")
-        self.brightness = self.settings_mgr.get("brightness")
 
         self._font_h1 = pygame.font.SysFont("Georgia", 42, bold=True)
         self._font_h2 = pygame.font.SysFont("Georgia", 20)
@@ -33,31 +32,22 @@ class OptionsScreen:
 
     def _build_buttons(self):
         W, H = self.screen.get_size()
-        left_cx = W // 3
-        right_cx = 2 * W // 3
+        cx = W // 2
 
-        # ── Left Column (Sound) ────────────────────────────────────────────────
+        # ── Center Column (Sound) ────────────────────────────────────────────────
         # Music Volume
-        self._vol_dec = RoundedButton((left_cx - 90, 260, self.btn_w, self.btn_h), "−", self._font_val,
+        self._vol_dec = RoundedButton((cx - 90, 260, self.btn_w, self.btn_h), "−", self._font_val,
                                       color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)
-        self._vol_inc = RoundedButton((left_cx + 44, 260, self.btn_w, self.btn_h), "+", self._font_val,
+        self._vol_inc = RoundedButton((cx + 44, 260, self.btn_w, self.btn_h), "+", self._font_val,
                                       color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)
 
         # Move Sound Volume
-        self._move_dec = RoundedButton((left_cx - 90, 420, self.btn_w, self.btn_h), "−", self._font_val,
+        self._move_dec = RoundedButton((cx - 90, 420, self.btn_w, self.btn_h), "−", self._font_val,
                                        color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)
-        self._move_inc = RoundedButton((left_cx + 44, 420, self.btn_w, self.btn_h), "+", self._font_val,
+        self._move_inc = RoundedButton((cx + 44, 420, self.btn_w, self.btn_h), "+", self._font_val,
                                        color=(BTN_COLOR[0]-20, BTN_COLOR[1]-20, BTN_COLOR[2]-20), hover_color=BTN_COLOR)
-
-        # ── Right Column (UI) ────────────────────────────────────────────────
-        # Brightness
-        self._bright_dec = RoundedButton((right_cx - 90, 260, self.btn_w, self.btn_h), "−", self._font_val,
-                                         color=(P1_COLOR[0]-20, P1_COLOR[1]-20, P1_COLOR[2]-20), hover_color=P1_COLOR)
-        self._bright_inc = RoundedButton((right_cx + 44, 260, self.btn_w, self.btn_h), "+", self._font_val,
-                                         color=(P1_COLOR[0]-20, P1_COLOR[1]-20, P1_COLOR[2]-20), hover_color=P1_COLOR)
 
         # ── Bottom (Control) ────────────────────────────────────────────────
-        cx = W // 2
         self._btn_back = RoundedButton(
             (cx - 200, H - 120, 180, 52), "◀  B A C K", self._font_btn,
             color=(max(0, P2_COLOR[0]-30), max(0, P2_COLOR[1]-30), max(0, P2_COLOR[2]-30)),
@@ -73,8 +63,7 @@ class OptionsScreen:
     def _apply_changes(self):
         self.settings_mgr.update({
             "music_volume": self.music_volume,
-            "move_volume": self.move_volume,
-            "brightness": self.brightness
+            "move_volume": self.move_volume
         })
         self._bg = ModernBackground(*self.screen.get_size())
 
@@ -91,12 +80,6 @@ class OptionsScreen:
             if self._move_inc.handle_event(event):
                 self.move_volume = min(100, self.move_volume + 10)
 
-            # UI Controls
-            if self._bright_dec.handle_event(event):
-                self.brightness = max(0, self.brightness - 10)
-            if self._bright_inc.handle_event(event):
-                self.brightness = min(100, self.brightness + 10)
-
             # Actions
             if self._btn_apply.handle_event(event):
                 self._apply_changes()
@@ -112,48 +95,31 @@ class OptionsScreen:
         mouse = pygame.mouse.get_pos()
         self._bg.draw(self.screen)
 
-        left_cx = W // 3
-        right_cx = 2 * W // 3
+        cx = W // 2
 
         # Title
         title = self._font_h1.render("O P T I O N S", True, TEXT_COLOR)
         self.screen.blit(title, title.get_rect(center=(W // 2, 80)))
 
-        # ── Draw Left Column (Sound)
-        self._label("SOUND", left_cx, 180, bold=True)
-        self._label("MUSIC VOLUME", left_cx, 232)
+        # ── Draw Center Column (Sound)
+        self._label("SOUND", cx, 180, bold=True)
+        self._label("MUSIC VOLUME", cx, 232)
         self._vol_dec.draw(self.screen, mouse)
         vol_text = self._font_val.render(f"{self.music_volume}%", True, TEXT_COLOR)
-        self.screen.blit(vol_text, vol_text.get_rect(center=(left_cx, 283)))
+        self.screen.blit(vol_text, vol_text.get_rect(center=(cx, 283)))
         self._vol_inc.draw(self.screen, mouse)
-        self._draw_bar(left_cx, 316, self.music_volume, color=BTN_COLOR)
+        self._draw_bar(cx, 316, self.music_volume, color=BTN_COLOR)
 
-        self._label("MOVE SOUND VOLUME", left_cx, 392)
+        self._label("MOVE SOUND VOLUME", cx, 392)
         self._move_dec.draw(self.screen, mouse)
         move_text = self._font_val.render(f"{self.move_volume}%", True, TEXT_COLOR)
-        self.screen.blit(move_text, move_text.get_rect(center=(left_cx, 443)))
+        self.screen.blit(move_text, move_text.get_rect(center=(cx, 443)))
         self._move_inc.draw(self.screen, mouse)
-        self._draw_bar(left_cx, 476, self.move_volume, color=BTN_COLOR)
-
-        # ── Draw Right Column (UI)
-        self._label("INTERFACE", right_cx, 180, bold=True)
-        self._label("BRIGHTNESS", right_cx, 232)
-        self._bright_dec.draw(self.screen, mouse)
-        pct = self._font_val.render(f"{self.brightness}%", True, TEXT_COLOR)
-        self.screen.blit(pct, pct.get_rect(center=(right_cx, 283)))
-        self._bright_inc.draw(self.screen, mouse)
-        self._draw_bar(right_cx, 316, self.brightness, color=P1_COLOR)
+        self._draw_bar(cx, 476, self.move_volume, color=BTN_COLOR)
 
         # Bottom Buttons
         self._btn_back.draw(self.screen, mouse)
         self._btn_apply.draw(self.screen, mouse)
-
-        # Apply temporary brightness correctly
-        if self.brightness < 100:
-            dim = pygame.Surface((W, H), pygame.SRCALPHA)
-            alpha = int(255 * (1 - self.brightness / 100))
-            dim.fill((0, 0, 0, alpha))
-            self.screen.blit(dim, (0, 0))
 
     def _label(self, text: str, cx: int, y: int, bold=False) -> None:
         font = self._font_h2 if not bold else self._font_val

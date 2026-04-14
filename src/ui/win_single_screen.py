@@ -10,6 +10,7 @@ class WinSingleScreen:
         self.time_str = result_data.get("time", "00:00")
         self.moves = result_data.get("moves", 0)
         self.size = result_data.get("size", 4)
+        self.is_solved = result_data.get("is_solved", True)
 
         # --- LOAD ASSETS ---
         try:
@@ -89,11 +90,16 @@ class WinSingleScreen:
         if self.bg_img: self.screen.blit(self.bg_img, (0, 0))
         else: self.screen.fill((255, 240, 235))
 
-        if self.title_banner:
+        if self.title_banner and self.is_solved:
             self.screen.blit(self.title_banner, (center_x - self.title_banner.get_width()//2, 40))
         else:
-            title_txt = self.font_title.render("CHÚC MỪNG!", True, (240, 100, 120))
-            sub_txt = self.font_sub.render("BẠN ĐÃ HOÀN THÀNH BÀN CỜ!", True, (80, 160, 140))
+            title_text = "CHÚC MỪNG!" if self.is_solved else "RẤT TIẾC!"
+            sub_text = "BẠN ĐÃ HOÀN THÀNH BÀN CỜ!" if self.is_solved else "BẠN CHƯA GIẢI ĐƯỢC BÀN CỜ NÀY!"
+            title_color = (240, 100, 120) if self.is_solved else (100, 120, 240)
+            sub_color = (80, 160, 140) if self.is_solved else (160, 80, 80)
+
+            title_txt = self.font_title.render(title_text, True, title_color)
+            sub_txt = self.font_sub.render(sub_text, True, sub_color)
             self.screen.blit(title_txt, title_txt.get_rect(centerx=center_x, top=50))
             self.screen.blit(sub_txt, sub_txt.get_rect(centerx=center_x, top=100))
 

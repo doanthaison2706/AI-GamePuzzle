@@ -9,11 +9,18 @@ class BaseGameManager(ABC):
     """Base class for all game managers.
     Holds shared attributes and common utility methods."""
 
-    def __init__(self, size: int):
+    def __init__(self, size: int, time_limit: int = 0):
         self.size = size
+        self.time_limit = time_limit
         self.is_playing = False
         self.is_paused = False
         self.elapsed_time = 0.0
+
+    @property
+    def remaining_time(self) -> float:
+        if self.time_limit > 0:
+            return max(0.0, self.time_limit - self.elapsed_time)
+        return self.elapsed_time
 
     @property
     @abstractmethod
@@ -62,6 +69,9 @@ class BaseGameManager(ABC):
             for player in self.players:
                 player.elapsed_time = self.elapsed_time
 
+            if self.time_limit > 0 and self.remaining_time <= 0:
+                self.is_playing = False
+
     @staticmethod
     def generate_seed() -> int:
         """Generate a random seed for synchronized shuffling."""
@@ -76,4 +86,4 @@ class BaseGameManager(ABC):
 
     def get_formatted_time(self) -> str:
         """Return the current elapsed time as a formatted MM:SS string."""
-        return self.format_time(self.elapsed_time)
+        return self.format_time(self.remaining_time)

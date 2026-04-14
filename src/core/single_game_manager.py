@@ -7,8 +7,8 @@ from .player import PlayerSlot, PlayerType
 class SingleGameManager(BaseGameManager):
     """Manages a single-player game session using a PlayerSlot."""
 
-    def __init__(self, size: int = 3, player: PlayerSlot | None = None):
-        super().__init__(size)
+    def __init__(self, size: int = 3, time_limit: int = 0, player: PlayerSlot | None = None):
+        super().__init__(size, time_limit)
         self.player = player or PlayerSlot(player_id=1, player_type=PlayerType.HUMAN)
         self.board = BoardFactory.create(size)
 

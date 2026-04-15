@@ -21,6 +21,7 @@ from configs import game_config as config
 _PREVIEW = 180
 _SIZES = {3: "3x3", 4: "4x4", 5: "5x5", 6: "6x6"}
 _DIFFS = {"easy": "EASY", "medium": "MEDIUM", "hard": "HARD"}
+_LAYOUT_DESIGN_HEIGHT = 972
 
 class SetupSingleScreen:
     def __init__(self, screen: pygame.Surface, start_as_multi: bool = False):
@@ -47,6 +48,11 @@ class SetupSingleScreen:
         self._error         = ""
 
         self._bg = ModernBackground(W, H)
+        self._layout_scale = 1.0
+        self._title_y = 60
+        self._line1_y = 360
+        self._line2_y = 580
+        self._player_row_y = 400
 
         def _mk(rect, text, color, hcolor):
             return RoundedButton(rect, text, self._font_btn, color=color, hover_color=hcolor)
@@ -116,15 +122,79 @@ class SetupSingleScreen:
 
         self._btn_back = RoundedButton((20, H - 76, 160, 52), "BACK", self._font_btn, color=(max(0, P2_COLOR[0]-30), max(0, P2_COLOR[1]-30), max(0, P2_COLOR[2]-30)), hover_color=P2_COLOR)
         self._btn_start = RoundedButton((cx - 120, H - 76, 240, 52), "START", self._font_btn, color=BTN_COLOR, hover_color=BTN_HOVER, active_color=BTN_ACTIVE)
+        self._apply_layout()
+
+    def _scale_y(self, value: int) -> int:
+        return int(round(value * self._layout_scale))
+
+    def _apply_layout(self) -> None:
+        """Keep the setup layout proportional across machines with different monitor heights."""
+        W, H = self.screen.get_size()
+        cx = W // 2
+        p1_cx = W // 4
+        p2_cx = 3 * W // 4
+
+        self._layout_scale = H / _LAYOUT_DESIGN_HEIGHT
+        self._title_y = self._scale_y(60)
+        self._line1_y = self._scale_y(360)
+        self._player_row_y = self._scale_y(400)
+        self._line2_y = self._scale_y(580)
+        self._size_label_y = self._scale_y(600)
+        self._score_label_y = self._scale_y(685)
+        self._timer_label_y = self._scale_y(770)
+        self._score_val_y = self._scale_y(735)
+        self._tdur_val_y = self._scale_y(820)
+        self._tdur_val_x = cx + 46
+
+        preview_size = max(128, self._scale_y(_PREVIEW))
+        self._prev_rect.size = (preview_size, preview_size)
+        self._prev_rect.centerx = cx
+        self._prev_rect.top = self._scale_y(100)
+
+        self._btn_pick_img.rect.topleft = (cx - 220 - 15, self._scale_y(295))
+        self._btn_def_img.rect.topleft = (cx + 15, self._scale_y(295))
+
+        type_y = self._player_row_y + 35
+        diff_y = self._player_row_y + 85
+        self._btn_p1_type.rect.topleft = (p1_cx - 80, type_y)
+        self._btn_p2_type.rect.topleft = (p2_cx - 80, type_y)
+
+        bw = 70
+        bx1 = p1_cx - (3 * bw + 16) // 2
+        bx2 = p2_cx - (3 * bw + 16) // 2
+        for i, key in enumerate(_DIFFS.keys()):
+            self._p1_diff_btns[key].rect.topleft = (bx1 + i * (bw + 8), diff_y)
+            self._p2_diff_btns[key].rect.topleft = (bx2 + i * (bw + 8), diff_y)
+
+        self._btn_p2_add.rect.topleft = (p2_cx - 40, self._player_row_y + 20)
+        self._btn_p2_remove.rect.topleft = (p2_cx + 105, self._player_row_y - 18)
+
+        for i, n in enumerate(_SIZES.keys()):
+            x = cx - (len(_SIZES) * 125 // 2) + i * 125
+            self._size_btns[n].rect.topleft = (x, self._size_label_y + 30)
+
+        self._score_dec.rect.topleft = (cx - 80, self._score_label_y + 30)
+        self._score_inc.rect.topleft = (cx + 34, self._score_label_y + 30)
+
+        self._timer_toggle.rect.topleft = (cx - 140, self._timer_label_y + 30)
+        self._timer_dec.rect.topleft = (cx - 40, self._timer_label_y + 30)
+        self._timer_inc.rect.topleft = (cx + 94, self._timer_label_y + 30)
+
+        footer_y = self._scale_y(_LAYOUT_DESIGN_HEIGHT - 76)
+        self._btn_back.rect.topleft = (20, footer_y)
+        self._btn_start.rect.topleft = (cx - 120, footer_y)
 
     def handle_events(self, events):
+        self._apply_layout()
         for event in events:
             if self._btn_back.handle_event(event): return "MENU", None
 
             if not self.is_multi and self._btn_p2_add.handle_event(event):
                 self.is_multi = True
+                self._apply_layout()
             if self.is_multi and self._btn_p2_remove.handle_event(event):
                 self.is_multi = False
+                self._apply_layout()
 
             if self._btn_pick_img.handle_event(event): self._pick()
             if self._btn_def_img.handle_event(event): self._use_default()
@@ -176,14 +246,14 @@ class SetupSingleScreen:
         return "SETUP_MULTI" if self.is_multi else "SETUP_SINGLE", None
 
     def render(self) -> None:
+        self._apply_layout()
         W, H  = self.screen.get_size()
         mouse = pygame.mouse.get_pos()
         cx    = W // 2
 
         self._bg.draw(self.screen)
         t = self._font_h1.render("G A M E   S E T U P", True, TEXT_COLOR)
-        # Đẩy tiêu đề xuống (Từ 35 -> 60)
-        self.screen.blit(t, t.get_rect(center=(cx, 60)))
+        self.screen.blit(t, t.get_rect(center=(cx, self._title_y)))
 
         # --- VẼ KHU VỰC ẢNH DÙNG CHUNG ---
         if self.global_preview:
@@ -198,14 +268,14 @@ class SetupSingleScreen:
         self._btn_def_img.draw(self.screen, mouse)
 
         # Đẩy đường kẻ 1 xuống (Từ 335 -> 360)
-        pygame.draw.line(self.screen, (55, 55, 90), (40, 360), (W - 40, 360), 1)
+        pygame.draw.line(self.screen, (55, 55, 90), (40, self._line1_y), (W - 40, self._line1_y), 1)
 
         # --- VẼ KHU VỰC NGƯỜI CHƠI 1 & 2 ---
-        self._draw_player_section(1, W//4, P1_COLOR, self._btn_p1_type, self._p1_diff_btns, mouse, 400)
-        self._draw_player_2_section(3 * W // 4, mouse, 400)
+        self._draw_player_section(1, W//4, P1_COLOR, self._btn_p1_type, self._p1_diff_btns, mouse, self._player_row_y)
+        self._draw_player_2_section(3 * W // 4, mouse, self._player_row_y)
 
         # Đẩy đường kẻ 2 xuống (Từ 465 -> 510)
-        pygame.draw.line(self.screen, (55, 55, 90), (40, 580), (W - 40, 580), 1)
+        pygame.draw.line(self.screen, (55, 55, 90), (40, self._line2_y), (W - 40, self._line2_y), 1)
 
         # --- VẼ KHU VỰC LUẬT CHƠI ---
         self._label("BOARD SIZE", cx, self._size_label_y)
@@ -285,7 +355,7 @@ class SetupSingleScreen:
             cropped = crop_ui.run()
             if cropped:
                 self.global_image = cropped
-                self.global_preview = pygame.transform.smoothscale(cropped, (_PREVIEW, _PREVIEW))
+                self.global_preview = pygame.transform.smoothscale(cropped, self._prev_rect.size)
         except Exception as exc:
             self._error = f"Could not load: {exc}"
 

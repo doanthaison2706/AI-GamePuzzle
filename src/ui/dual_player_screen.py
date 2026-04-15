@@ -470,8 +470,10 @@ class DualPlayerScreen:
         # Vẫn trong hàm render, sửa lại 2 dòng label này:
         p1_lbl = self.font_stat.render("PLAYER 1 (WASD | Hold L-SHIFT)", True, (80, 160, 120))
         p2_lbl = self.font_stat.render("PLAYER 2 (ARROWS | Hold R-SHIFT)", True, (200, 100, 80))
-        self.screen.blit(p1_lbl, (self._p1_board_x, self._board_y - 45))
-        self.screen.blit(p2_lbl, (self._p2_board_x, self._board_y - 45))
+        label_y = self._board_y - 45
+        self.screen.blit(p1_lbl, (self._p1_board_x, label_y))
+        p2_rect = p2_lbl.get_rect(top=label_y, right=self._p2_board_x + self._B)
+        self.screen.blit(p2_lbl, p2_rect)
 
         # --- Vẽ khung gỗ cho 2 bàn cờ ---
         def draw_frame(actual_x, actual_y):

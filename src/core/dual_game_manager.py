@@ -24,6 +24,7 @@ class DualGameManager(BaseGameManager):
         # Tách biệt: Thắng 1 ván vs Thắng cả trận
         self.round_winner: PlayerSlot | None = None
         self.match_winner: PlayerSlot | None = None
+        self.round_history = []
 
     @property
     def players(self) -> list[PlayerSlot]:
@@ -52,8 +53,25 @@ class DualGameManager(BaseGameManager):
         """Nếu muốn làm lại toàn bộ trận đấu (Tỉ số về 0-0)"""
         self.score = {self.p1.player_id: 0, self.p2.player_id: 0}
         self.match_winner = None
+        self.round_history = []
         self.new_game()
 
+    def _record_round(self):
+        """Ghi lại lịch sử của ván vừa đánh"""
+        w_id = 0
+        if isinstance(self.round_winner, PlayerSlot):
+            w_id = self.round_winner.player_id
+        elif self.round_winner == "TIE":
+            w_id = -1
+            
+        self.round_history.append({
+            "round": len(self.round_history) + 1,
+            "winner_id": w_id,
+            "time": self.get_formatted_time(),
+            "p1_moves": self.p1.move_count,
+            "p2_moves": self.p2.move_count
+        })
+        
     def process_move(self, player_id: int, r: int, c: int) -> bool:
         """Xử lý nước đi."""
         # Chặn đánh nếu ván hoặc trận đã kết thúc
@@ -71,10 +89,10 @@ class DualGameManager(BaseGameManager):
                 self.round_winner = player
                 self.score[player.player_id] += 1
 
-                # FIX 2: Kiểm tra xem đã đạt mốc BO3/BO5 chưa
                 if self.score[player.player_id] >= self.score_limit:
                     self.match_winner = player
 
+                self._record_round()  
                 self._stop_all()
 
             return True
@@ -135,8 +153,9 @@ class DualGameManager(BaseGameManager):
             if self.score[winner.player_id] >= self.score_limit:
                 self.match_winner = winner
         else:
-            self.round_winner = "TIE" # Mark as tie but obviously not a player slot
+            self.round_winner = "TIE" 
 
+        self._record_round()
         self._stop_all()
 
     def is_game_over(self) -> bool:

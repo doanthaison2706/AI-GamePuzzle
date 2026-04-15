@@ -44,9 +44,10 @@ class DualPlayerScreen:
         # --- GAME MANAGER ---
         p1 = PlayerSlot(player_id=1, player_type=p1_type_enum)
         p2 = PlayerSlot(player_id=2, player_type=p2_type_enum)
-        score_limit = setup_data.get("score", 3)
+        bo_format = setup_data.get("score", 3)
+        wins_needed = (bo_format // 2) + 1  # Toán học: 1->1 win, 3->2 wins, 5->3 wins
         time_limit = setup_data.get("time", 0)
-        self.gm = DualGameManager(size=self.size, p1=p1, p2=p2, score_limit=score_limit, time_limit=time_limit)
+        self.gm = DualGameManager(size=self.size, p1=p1, p2=p2, score_limit=wins_needed, time_limit=time_limit)
         self.gm.new_game()
 
         self.p1 = self.gm.p1
@@ -260,10 +261,8 @@ class DualPlayerScreen:
                         winner = self.gm.get_winner()
                         result_data = {
                             "winner_id": winner.player_id if winner else 0,
-                            "time":      self.gm.get_formatted_time(),
-                            "p1_moves":  self.p1.move_count,
-                            "p2_moves":  self.p2.move_count,
                             "score":     self.gm.get_score_text(),
+                            "history":   self.gm.round_history,  # <--- BẮT BUỘC PHẢI CÓ DÒNG NÀY
                             "size":      self.size,
                         }
                         return "WIN_DUAL", result_data
@@ -405,8 +404,6 @@ class DualPlayerScreen:
                                 if self.gm.is_round_over() and not self.is_round_over_state:
                                     self.is_round_over_state = True
                                     self.ai_active = {1: False, 2: False}
-                                    if not self.is_p1_bot: self.btn_p1_ai.text = "AI SOLVE"
-                                    if not self.is_p2_bot: self.btn_p2_ai.text = "AI SOLVE"
                                     if self.gm.is_game_over():
                                         self.btn_next_round.text = "RESULTS"
                                     else:
@@ -550,5 +547,4 @@ class DualPlayerScreen:
 
             win_surf = self.font_title.render(msg, True, (230, 80, 100))
             self.screen.blit(win_surf, win_surf.get_rect(center=(self.screen.get_width()//2, self.screen.get_height()//2 - 40)))
-            self.btn_next_round.draw(self.screen, mouse)
             self.btn_next_round.draw(self.screen, mouse)

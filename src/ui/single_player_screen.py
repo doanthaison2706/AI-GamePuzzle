@@ -281,22 +281,36 @@ class SinglePlayerScreen:
         color_text_blue = (50, 100, 150)
         color_text_red = (200, 80, 100)
 
-        total_w = 140 + 155 + 155 + 160 # 140, 140, 160, 140 width but slightly varied. total widths:
-        # Time: 140
-        # Level: 140
-        # Move: 160
-        # Best: 140
-        # Spacing: 15
-        total_w = 140 + 140 + 160 + 140 + 45
+        # 1. Kích thước linh hoạt cho 5 ô (ô CORRECT cần rộng hơn một chút)
+        w_time = 110
+        w_level = 130
+        w_move = 130
+        w_correct = 170 
+        w_best = 130
+        gap = 15 # Khoảng cách giữa các ô
+
+        # 2. Tính tổng chiều rộng để căn ra chính giữa màn hình
+        total_w = w_time + w_level + w_move + w_correct + w_best + (gap * 4)
         sx = (screen_w - total_w) // 2
 
-        self.draw_top_stat_pill(sx, stat_y, 140, self.gm.get_formatted_time(), color_text_blue, color_text_blue)
-        self.draw_top_stat_pill(sx + 155, stat_y, 140, f"LEVEL: {self.size}x{self.size}", color_text_blue, color_text_blue)
-        self.draw_top_stat_pill(sx + 310, stat_y, 160, f"MOVE: {self.player.move_count}", color_text_red, color_text_red)
+        # 3. Tính toán vị trí X cho từng ô
+        x_time = sx
+        x_level = x_time + w_time + gap
+        x_move = x_level + w_level + gap
+        x_correct = x_move + w_move + gap
+        x_best = x_correct + w_correct + gap
 
         correct_tiles = self.gm.board.count_correct_tiles()
         total_tiles = self.gm.board.total_tiles
-        self.draw_top_stat_pill(sx + 485, stat_y, 140, f"CORRECT: {correct_tiles}/{total_tiles}", color_text_red, color_text_red, is_record=True)
+
+        # 4. Vẽ cả 5 ô lên màn hình
+        self.draw_top_stat_pill(x_time, stat_y, w_time, self.gm.get_formatted_time(), color_text_blue, color_text_blue)
+        self.draw_top_stat_pill(x_level, stat_y, w_level, f"LEVEL: {self.size}x{self.size}", color_text_blue, color_text_blue)
+        self.draw_top_stat_pill(x_move, stat_y, w_move, f"MOVE: {self.player.move_count}", color_text_red, color_text_red)
+        self.draw_top_stat_pill(x_correct, stat_y, w_correct, f"CORRECT: {correct_tiles}/{total_tiles}", color_text_red, color_text_red)
+        
+        # Ô Kỷ lục có màu nền khác biệt (is_record=True)
+        self.draw_top_stat_pill(x_best, stat_y, w_best, f"BEST: {self.best_score}", color_text_red, color_text_red, is_record=True)
 
         if self.wood_frame_img:
             frame_x = config.MARGIN_LEFT - 20

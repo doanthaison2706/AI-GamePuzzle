@@ -29,9 +29,7 @@ class SettingsManager:
     def update(self, new_settings):
         """Update multiple settings and save to file."""
         for k, v in new_settings.items():
-            if k in self.DEFAULT_SETTINGS:
-                self.settings[k] = v
-
+            self.settings[k] = v
         self.save()
 
     def load(self):
@@ -41,8 +39,8 @@ class SettingsManager:
                 with open(self.CONFIG_FILE, "r") as f:
                     data = json.load(f)
                     for k, v in data.items():
-                        if k in self.DEFAULT_SETTINGS:
-                            self.settings[k] = v
+                        # Xóa dòng 'if k in self.DEFAULT_SETTINGS:'
+                        self.settings[k] = v
             except Exception as e:
                 print(f"Error loading settings: {e}. Using defaults.")
 

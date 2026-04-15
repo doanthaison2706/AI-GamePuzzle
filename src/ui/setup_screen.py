@@ -215,7 +215,7 @@ class SetupSingleScreen:
             btn.draw(self.screen, mouse)
 
         if self.is_multi:
-            self._label("SCORE LIMIT", cx, self._score_label_y)
+            self._label("FORMAT (BEST OF)", cx, self._score_label_y)
             self._score_dec.draw(self.screen, mouse)
             val = self._font_val.render(str(self.selected_score), True, ACCENT)
             self.screen.blit(val, val.get_rect(center=(cx, self._score_val_y)))

@@ -115,7 +115,21 @@ class SinglePlayerScreen:
             self.btn_undo.color_bot = (140, 140, 140)
             self.btn_undo.shadow_color = (100, 100, 100)
 
+        self._refresh_button_states()
+
+    def _refresh_button_states(self):
+        controls_locked = self.is_paused or self.is_winning
+
+        self.btn_hint.enabled = (not self.is_bot) and (not self.is_ai_playing) and (not controls_locked)
+        self.btn_ai.enabled = (not self.is_bot) and (not self.is_paused) and (not self.is_winning)
+        self.btn_undo.enabled = (not self.is_bot) and (not self.is_ai_playing) and (not controls_locked)
+        self.btn_replay.enabled = (not self.is_paused) and (not self.is_winning)
+        self.btn_pause.enabled = not self.is_winning
+        self.btn_quit.enabled = True
+
     def handle_events(self, events):
+        self._refresh_button_states()
+
         if self.is_winning:
             if pygame.time.get_ticks() - self.win_start_time >= 1500:
                 result_data = {
@@ -170,6 +184,7 @@ class SinglePlayerScreen:
             if self.btn_pause.handle_event(event):
                 self.is_paused = not self.is_paused
                 self.btn_pause.text = "CONTINUE" if self.is_paused else "PAUSE"
+                self._refresh_button_states()
             if self.btn_quit.handle_event(event):   return "MENU"
 
             if self.gm.is_playing and not self.show_full_image and not self.is_paused and not self.is_ai_playing:
@@ -267,6 +282,7 @@ class SinglePlayerScreen:
 
     def render(self):
         screen_w, screen_h = self.screen.get_size()
+        self._refresh_button_states()
 
         if self.bg_img: self.screen.blit(self.bg_img, (0, 0))
         else: self.screen.fill((255, 246, 233))

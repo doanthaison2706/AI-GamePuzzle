@@ -26,6 +26,7 @@ class Button:
         self.font       = font
         self.text_color = text_color
         self._held      = False
+        self.enabled    = True
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -34,6 +35,10 @@ class Button:
         Feed a single pygame event.
         Returns True on the frame the button is released (clicked).
         """
+        if not self.enabled:
+            self._held = False
+            return False
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 self._held = True

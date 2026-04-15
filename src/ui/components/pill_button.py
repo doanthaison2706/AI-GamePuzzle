@@ -58,12 +58,16 @@ class PillButton(Button):
         shad_rect = pygame.Rect(
             rect.x, rect.y + self.shadow_offset, rect.width, rect.height
         )
-        pygame.draw.rect(surface, self.shadow_color, shad_rect, border_radius=radius)
+        shadow_color = self.shadow_color if self.enabled else (105, 105, 105)
+        pygame.draw.rect(surface, shadow_color, shad_rect, border_radius=radius)
 
         # ── Vertical gradient fill ─────────────────────────────────────────────
         c_top = self.color_top
         c_bot = self.color_bot
-        if rect.collidepoint(mouse_pos):          # lighten on hover
+        if not self.enabled:
+            c_top = (185, 185, 185)
+            c_bot = (145, 145, 145)
+        elif rect.collidepoint(mouse_pos):          # lighten on hover
             c_top = tuple(min(255, c + 20) for c in c_top)
             c_bot = tuple(min(255, c + 20) for c in c_bot)
 
@@ -82,8 +86,9 @@ class PillButton(Button):
         pygame.draw.rect(surface, (255, 255, 255), rect, border_radius=radius, width=2)
 
         # ── Label + text shadow ───────────────────────────────────────────────
-        label = self.font.render(self.text, True, self.text_color)
-        shad  = self.font.render(self.text, True, self.shadow_color)
+        text_color = self.text_color if self.enabled else (235, 235, 235)
+        label = self.font.render(self.text, True, text_color)
+        shad  = self.font.render(self.text, True, shadow_color)
         label_rect = label.get_rect(center=rect.center)
         surface.blit(shad,  (label_rect.x, label_rect.y + 1))
         surface.blit(label, label_rect)

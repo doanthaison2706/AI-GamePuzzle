@@ -7,7 +7,7 @@ from src.core.settings_manager import SettingsManager
 from src.ui.renderer import Renderer
 from src.ui.components import PillButton
 from src.ai.bot import AIBot
-from src.utils.image_crop import slice_image  
+from src.utils.image_crop import slice_image
 
 class DualPlayerScreen:
     """Màn hình chế độ 2 người chơi (split-screen)."""
@@ -81,7 +81,7 @@ class DualPlayerScreen:
         # --- DI CHUYỂN ĐOẠN XỬ LÝ ẢNH XUỐNG ĐÂY ---
         self.full_image = setup_data.get("image")
         self.image_slices = None
-        
+
         if self.full_image:
             # Truyền self.full_image (Surface) và self._B (Kích thước thực tế bàn cờ dual)
             _, self.image_slices = slice_image(self.full_image, self._B, self.size)
@@ -176,11 +176,11 @@ class DualPlayerScreen:
                                f"HINT ({self.max_hints})", (190,240,255), (135,215,245), (110,190,220))
 
         p2_cx = self._p2_board_x + self._B // 2
-        
+
         # KIỂM TRA DÒNG NÀY: Phải là self.btn_p2_hint (nếu vẫn là self.btn_p2_ai thì sửa lại nhé)
         self.btn_p2_hint = _pb((p2_cx - pad // 2 - bw_act, btn_y, bw_act, btn_h),
                                f"HINT ({self.max_hints})", (190,240,255), (135,215,245), (110,190,220))
-                               
+
         self.btn_p2_undo = _pb((p2_cx + pad // 2, btn_y, bw_act, btn_h),
                                "UNDO", (200,210,255), (150,170,255), (120,140,220))
 
@@ -206,6 +206,8 @@ class DualPlayerScreen:
             self.btn_p2_undo.color_bot = (140, 140, 140)
             self.btn_p2_undo.shadow_color = (100, 100, 100)
 
+        self._refresh_button_states()
+
     def _reset_hints(self):
         """Khôi phục lại số lượt Hint khi qua ván mới"""
         self.hints_left = {1: self.max_hints, 2: self.max_hints}
@@ -215,8 +217,25 @@ class DualPlayerScreen:
         if not self.is_p2_bot:
             self.btn_p2_hint.text = f"HINT ({self.max_hints})"
             self.btn_p2_hint.color_top, self.btn_p2_hint.color_bot, self.btn_p2_hint.shadow_color = (190,240,255), (135,215,245), (110,190,220)
-            
+
+        self._refresh_button_states()
+
+    def _refresh_button_states(self):
+        controls_enabled = self.gm.is_playing and (not self.gm.is_paused) and (not self.is_round_over_state)
+
+        self.btn_p1_hint.enabled = (not self.is_p1_bot) and controls_enabled and (self.hints_left[1] > 0)
+        self.btn_p1_undo.enabled = (not self.is_p1_bot) and controls_enabled and (not self.ai_active[1])
+        self.btn_p2_hint.enabled = (not self.is_p2_bot) and controls_enabled and (self.hints_left[2] > 0)
+        self.btn_p2_undo.enabled = (not self.is_p2_bot) and controls_enabled and (not self.ai_active[2])
+
+        self.btn_new_game.enabled = not self.is_round_over_state
+        self.btn_pause.enabled = not self.is_round_over_state
+        self.btn_quit.enabled = True
+        self.btn_next_round.enabled = self.is_round_over_state
+
     def handle_events(self, events):
+        self._refresh_button_states()
+
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LSHIFT:
@@ -230,7 +249,9 @@ class DualPlayerScreen:
                 elif event.key == pygame.K_RSHIFT:
                     self.show_full_image_p2 = False
             if self.btn_quit.handle_event(event):     return "MENU"
-            if self.btn_pause.handle_event(event):    self.gm.is_paused = not self.gm.is_paused
+            if self.btn_pause.handle_event(event):
+                self.gm.is_paused = not self.gm.is_paused
+                self._refresh_button_states()
 
             if self.is_round_over_state:
                 if self.btn_next_round.handle_event(event):
@@ -251,6 +272,7 @@ class DualPlayerScreen:
                         self.ai_active[1] = self.is_p1_bot
                         self.ai_active[2] = self.is_p2_bot
                         self._reset_hints()
+                        self._refresh_button_states()
                 return "PLAYING_DUAL"
 
             # --- CẬP NHẬT TRẬN MỚI: Tự động chạy lại AI cho các BOT ---
@@ -259,6 +281,7 @@ class DualPlayerScreen:
                 self.ai_active[1] = self.is_p1_bot
                 self.ai_active[2] = self.is_p2_bot
                 self._reset_hints()
+                self._refresh_button_states()
 
             # --- HOÀN TÁC P1: Khóa nếu là BOT từ đầu hoặc AI đang giải thay ---
             if not self.is_p1_bot and not self.ai_active[1]:
@@ -283,7 +306,7 @@ class DualPlayerScreen:
                 er, ec = self.board1.get_empty_pos()
                 dx, dy = self.bots[1].get_next_move(self.board1.matrix, er, ec)
                 if (dx, dy) != (0, 0):
-                    if self.gm.process_move(1, er + dx, ec + dy): 
+                    if self.gm.process_move(1, er + dx, ec + dy):
                         moved_p1 = True
                         self.hints_left[1] -= 1
                         self.btn_p1_hint.text = f"HINT ({self.hints_left[1]})"
@@ -298,7 +321,7 @@ class DualPlayerScreen:
                 er, ec = self.board2.get_empty_pos()
                 dx, dy = self.bots[2].get_next_move(self.board2.matrix, er, ec)
                 if (dx, dy) != (0, 0):
-                    if self.gm.process_move(2, er + dx, ec + dy): 
+                    if self.gm.process_move(2, er + dx, ec + dy):
                         moved_p2 = True
                         self.hints_left[2] -= 1
                         self.btn_p2_hint.text = f"HINT ({self.hints_left[2]})"
@@ -424,6 +447,7 @@ class DualPlayerScreen:
         screen_w = self.screen.get_width()
         cx_top   = screen_w // 2
         W        = config.DUAL_WINDOW_WIDTH
+        self._refresh_button_states()
 
         if self.bg_img:
             self.screen.blit(self.bg_img, (0, 0))
@@ -476,7 +500,7 @@ class DualPlayerScreen:
             offset_x=self._p1_offset_x, offset_y=self._board_top,
             board_size=self._B
         )
-        
+
         # Vẽ Board 2 (Của Player 2)
         self.renderer.draw_board(
             self.board2.matrix, self.size,

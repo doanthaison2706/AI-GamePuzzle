@@ -140,11 +140,29 @@ class SetupSingleScreen:
         self._player_row_y = self._scale_y(400)
         self._line2_y = self._scale_y(580)
         self._size_label_y = self._scale_y(600)
-        self._score_label_y = self._scale_y(685)
-        self._timer_label_y = self._scale_y(770)
-        self._score_val_y = self._scale_y(735)
-        self._tdur_val_y = self._scale_y(820)
         self._tdur_val_x = cx + 46
+
+        control_gap = 30
+        section_gap = max(12, self._scale_y(14))
+        footer_gap = max(2, self._scale_y(4))
+        label_half_h = self._font_h2.get_height() // 2
+        value_half_h = self._font_val.get_height() // 2
+        control_h = self._score_dec.rect.height
+
+        size_controls_top = self._size_label_y + control_gap
+        rules_bottom = size_controls_top + control_h
+
+        self._score_label_y = self._scale_y(685)
+        self._score_val_y = self._scale_y(735)
+        if self.is_multi:
+            self._score_label_y = rules_bottom + section_gap + label_half_h
+            score_controls_top = self._score_label_y + control_gap
+            self._score_val_y = score_controls_top + control_h // 2
+            rules_bottom = max(score_controls_top + control_h, self._score_val_y + value_half_h)
+
+        self._timer_label_y = rules_bottom + section_gap + label_half_h
+        timer_controls_top = self._timer_label_y + control_gap
+        self._tdur_val_y = timer_controls_top + control_h // 2
 
         preview_size = max(128, self._scale_y(_PREVIEW))
         self._prev_rect.size = (preview_size, preview_size)
@@ -171,16 +189,24 @@ class SetupSingleScreen:
 
         for i, n in enumerate(_SIZES.keys()):
             x = cx - (len(_SIZES) * 125 // 2) + i * 125
-            self._size_btns[n].rect.topleft = (x, self._size_label_y + 30)
+            self._size_btns[n].rect.topleft = (x, size_controls_top)
 
-        self._score_dec.rect.topleft = (cx - 80, self._score_label_y + 30)
-        self._score_inc.rect.topleft = (cx + 34, self._score_label_y + 30)
-
-        self._timer_toggle.rect.topleft = (cx - 140, self._timer_label_y + 30)
-        self._timer_dec.rect.topleft = (cx - 40, self._timer_label_y + 30)
-        self._timer_inc.rect.topleft = (cx + 94, self._timer_label_y + 30)
+        score_controls_top = self._score_label_y + control_gap
+        self._score_dec.rect.topleft = (cx - 80, score_controls_top)
+        self._score_inc.rect.topleft = (cx + 34, score_controls_top)
 
         footer_y = self._scale_y(_LAYOUT_DESIGN_HEIGHT - 76)
+        timer_bottom = max(timer_controls_top + control_h, self._tdur_val_y + value_half_h)
+        overflow = timer_bottom - (footer_y - footer_gap)
+        if overflow > 0:
+            self._timer_label_y -= overflow
+            self._tdur_val_y -= overflow
+            timer_controls_top -= overflow
+
+        self._timer_toggle.rect.topleft = (cx - 140, timer_controls_top)
+        self._timer_dec.rect.topleft = (cx - 40, timer_controls_top)
+        self._timer_inc.rect.topleft = (cx + 94, timer_controls_top)
+
         self._btn_back.rect.topleft = (20, footer_y)
         self._btn_start.rect.topleft = (cx - 120, footer_y)
 
